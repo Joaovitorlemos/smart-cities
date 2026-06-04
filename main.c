@@ -22,7 +22,6 @@
 // ==========================================
 int main()
 {
-    puts("test");
-    puts("test jota");
+    puts("att name branch-livia");
     return 0;
 }
