@@ -23,5 +23,6 @@
 int main()
 {
     puts("test");
+    puts("test jota");
     return 0;
 }
