@@ -10,6 +10,19 @@
 // ==========================================
 // STRUCTS
 // ==========================================
+typedef struct ocorrencia{ //NÓ OCORRÊNCIAS
+ int codigo;
+ int severidade;
+ char descricao[100];
+ int status;
+ struct ocorrencia *prox;
+}Ocorrencia;
+
+typedef struct listaOcorrencias{ //NÓ CABEÇA OCORRÊNCIAS
+    Ocorrencia *inicio;
+    Ocorrencia *final;
+}listaOcorrencias;
+
 //NÓ BAIRRO
 typedef struct bairro{ //NÓ
     int codigo;
@@ -58,6 +71,15 @@ Sensor *buscarSensor (int codigo, listaSensores *S);
 void cadastrarSensor (int codigoSensor, int tipo, int status, int codigoBairro, listaBairros *B);
 void alterarStatusSensor (int codigoSensor, int codigoBairro, int novoStatus, listaBairros *B);
 void listarSensoresBairro (int codigoBairro, listaBairros *B);
+// ==========================================
+// REGISTRO DE OCORRENCIAS
+// ==========================================
+listaOcorrencias *criarListaOcorrencias();
+Ocorrencia *criarOcorrencia();
+Ocorrencia *buscarOcorrencia(int codigo, listaOcorrencias *O);
+
+void registrarOcorrencia (int codigo, int severidade, int status, int codigoSensor, int codigoBairro, char *descricao, listaBairros *B);
+void listarOcorrencias(listaBairros *B); //não tem parâmetros pq é uma varredura global. listar TODAS as ocorrências
 
 // ==========================================
 // EQUIPES E CHAMADOS
@@ -269,6 +291,7 @@ void cadastrarSensor (int codigoSensor, int tipo, int status, int codigoBairro, 
         s->codigo = codigoSensor;
         s->tipo = tipo;
         s->status = status;
+        s->listaOcorrencias = criarListaOcorrencias();
 
         //criação do link entre bairros e sensores através da inserção
         //CASO 01: primeiro sensor do bairro
@@ -371,4 +394,161 @@ void listarSensoresBairro (int codigoBairro, listaBairros *B)
 
     navegador = NULL;
     bairroAssociado = NULL;
+}
+
+// ==========================================
+// REGISTRO DE OCORRENCIAS
+// ==========================================
+listaOcorrencias *criarListaOcorrencias() //usado na hora de cadastrar o sensor
+{  
+    listaOcorrencias *O = (listaOcorrencias *) calloc(1, sizeof(listaOcorrencias));
+
+    return O;
+
+}
+
+Ocorrencia *criarOcorrencia()
+{
+    Ocorrencia *o = (Ocorrencia *) calloc(1, sizeof(Ocorrencia));
+
+    return o;
+}
+
+Ocorrencia *buscarOcorrencia(int codigo, listaOcorrencias *O)
+{
+    //trava de segurança: sensor existe, mas não tem ocorrẽncias associadas a ele
+    if (O == NULL || O->inicio == NULL && O->final == NULL)
+        return NULL;
+
+    Ocorrencia *navegador = O->inicio;
+
+    while (navegador != NULL && navegador->codigo != codigo)
+    {
+        navegador = navegador->prox;
+    }
+
+    return navegador; 
+}
+
+void registrarOcorrencia (int codigo, int severidade, int status, int codigoSensor, int codigoBairro, char *descricao, listaBairros *B)
+{
+    //procura bairro associado
+    Bairro *bairroAssociado = buscarBairro(codigoBairro, B);
+    if (bairroAssociado == NULL) 
+    {
+        printf("ERRO: Bairro %d não existe!\n", codigoBairro);
+        return;
+    }
+
+    //procura sensor associado
+    Sensor *sensorAssociado = buscarSensor(codigoSensor, bairroAssociado->listaSensores);
+    if (sensorAssociado == NULL)
+    {
+        printf("ERRO: Sensor %d não existe!\n", codigoSensor);
+        return;
+    }
+
+    //verifica se já não existe uma ocorrência com o código digitado
+    Ocorrencia *verificacao = buscarOcorrencia (codigo, sensorAssociado->listaOcorrencias);
+    if (verificacao != NULL)
+    {
+        printf("Erro: ocorrência já existente!\n");
+        return;
+    }
+    else
+    {
+        //alocação do espaço + registro das informações
+        Ocorrencia *o = criarOcorrencia();
+        o->codigo = codigo;
+        o->severidade = severidade;
+        o->status = status;
+        strcpy(o->descricao, descricao); //melhorar -> maior eficiencia
+
+        //INSERÇÃO NO FINAL -> CASO 01: primeira ocorrência do sensor
+        if (sensorAssociado->listaOcorrencias->inicio == NULL && sensorAssociado->listaOcorrencias->final == NULL)
+        {
+            sensorAssociado->listaOcorrencias->inicio = o;
+            sensorAssociado->listaOcorrencias->final = o;
+        }
+        else
+        {
+            sensorAssociado->listaOcorrencias->final->prox = o;
+            sensorAssociado->listaOcorrencias->final = o;
+        }
+    }
+
+    bairroAssociado = NULL;
+    sensorAssociado = NULL;
+    verificacao = NULL;
+}
+
+void listarOcorrencias(listaBairros *B) //é um loop triplo -> pode melhorar?
+{
+    //a "trava de seguraça" seria verificar se algum desses ponteiros são nulos
+    
+    //trava principal: a cidade tem bairros?
+    if (B == NULL || B->inicio == NULL)
+    {
+        printf("ERRO: nenhum bairro cadastrado!\n");
+        return;
+    }
+    Bairro *navegador1 = B->inicio; //aponta para o primeiro nó da masterlist de bairros
+
+    while (navegador1 != NULL) //enquanto não chega no final da masterlist de bairros. vai apontar para os nós
+    {
+        //trava de segurança do bairro: esse barro em específico tem sensores associados a ele?
+        if (navegador1->listaSensores != NULL && navegador1->listaSensores->inicio != NULL) //
+        {
+            Sensor *navegador2 = navegador1->listaSensores->inicio;
+
+            while (navegador2 != NULL) //percorre os nós da lista de sensores associada ao bairro atual (para onde o navegador1 está apontando)
+            {
+                //trava de segurança do sensor: esse sensor em específico tem ocorrências associadas a ele?
+                if (navegador2->listaOcorrencias != NULL && navegador2->listaOcorrencias->inicio != NULL)
+                {
+                    Ocorrencia *navegador3 = navegador2->listaOcorrencias->inicio;
+                    while (navegador3 != NULL) //percorre os nós da lista de ocorrências associada ao sensor atual (para onde o navegador2 está apontando)
+                    {
+                        printf("--- Bairro: %s | Sensor: %d ---\n", navegador1->nome, navegador2->codigo);
+                        printf("Codigo da ocorrência: %d\n", navegador3->codigo);
+                        switch (navegador3->severidade)
+                        {
+                            case 1:
+                                printf("Severidade: 1 - baixa\n");
+                                break;
+                            case 2:
+                                printf("Severidade: 2 - média\n");
+                                break;
+                            case 3:
+                                printf("Severidade: 3 - alta\n");
+                                break;
+                            case 4:
+                                printf("Severidade: 4 - crítica\n");
+                                break;
+                        }
+                        printf("Descrição: %s", navegador3->descricao);
+                        switch (navegador3->status)
+                        {
+                            case 1:
+                                printf("Status: 1 - aberta\n");
+                                break;
+                            case 2:
+                                printf("Status: 2 - em andamento\n");
+                                break;
+                            case 3:
+                                printf("Status: 3 - finalizada\n");
+                                break;
+                        }
+                        printf("\n");
+                        navegador3 = navegador3->prox;
+                    }
+                }
+
+                navegador2 = navegador2->prox;
+            }
+            
+        }
+
+        navegador1 = navegador1->prox;
+    }
 }
