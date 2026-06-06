@@ -24,6 +24,19 @@ typedef struct _listaBairros{
     Bairro *final;
 }listaBairros;
 
+typedef struct sensor{ //NÓ SENSOR
+    int codigo;
+    int tipo;
+    int status;
+    Ocorrencia *listaOcorrencias;
+    struct sensor *prox;
+}Sensor;
+
+typedef struct _listasensores{ //NÓ CABEÇA SENSOR
+    Sensor *inicio;
+    Sensor *final;
+}listaSensores;
+
 
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
@@ -38,6 +51,13 @@ void removerBairro (listaBairros *B, int codigo);
 // ==========================================
 // GERENCIAMENTO DE SENSORES
 // ==========================================
+listaSensores *criarListaSensor ();
+Sensor *criarSensor ();
+Sensor *buscarSensor (int codigo, listaSensores *S);
+
+void cadastrarSensor (int codigoSensor, int tipo, int status, int codigoBairro, listaBairros *B);
+void alterarStatusSensor (int codigoSensor, int codigoBairro, int novoStatus, listaBairros *B);
+void listarSensoresBairro (int codigoBairro, listaBairros *B);
 
 // ==========================================
 // EQUIPES E CHAMADOS
@@ -189,4 +209,165 @@ void removerBairro (listaBairros *B, int codigo)
     free(navegador);
     navegador = NULL;
     aux = NULL;
+}
+
+// ==========================================
+// GERENCIAMENTO DE SENSORES
+// ==========================================
+listaSensores *criarListaSensor ()
+{
+    listaSensores *S = (listaSensores *) calloc(1, sizeof(listaSensores));
+
+    return S;
+}
+
+Sensor *criarSensor ()
+{
+    Sensor *s = (Sensor *) calloc(1, sizeof(Sensor));
+
+    return s;
+}
+
+Sensor *buscarSensor (int codigo, listaSensores *S)
+{
+    //trava de segurança: bairro existe, mas não tem sensores associados a ele
+    if (S->inicio == NULL && S->final == NULL)
+        return NULL;
+    
+    Sensor *navegador = S->inicio;
+
+    while (navegador != NULL && navegador->codigo != codigo)
+    {
+        navegador = navegador->prox;
+    }
+
+    return navegador; 
+}
+
+void cadastrarSensor (int codigoSensor, int tipo, int status, int codigoBairro, listaBairros *B)
+{
+    //procura o bairro associado
+    Bairro *bairroAssociado = buscarBairro(codigoBairro, B);
+    if (bairroAssociado == NULL) 
+    {
+        printf("ERRO: Bairro %d não existe!\n", codigoBairro);
+        return;
+    }
+
+    //verificar se já não existe um sensor com o código digitado
+    Sensor *verificacao = buscarSensor (codigoSensor, bairroAssociado->listaSensores);
+    if (verificacao != NULL)
+    {
+        printf("ERRO: sensor já existente!\n");
+        return;
+    }
+    else
+    {
+        //alocação do espaço + registro das informações
+        Sensor *s = criarSensor();
+        s->codigo = codigoSensor;
+        s->tipo = tipo;
+        s->status = status;
+
+        //criação do link entre bairros e sensores através da inserção
+        //CASO 01: primeiro sensor do bairro
+        if (bairroAssociado->listaSensores->inicio == NULL && bairroAssociado->listaSensores->final == NULL)
+        {
+            bairroAssociado->listaSensores->inicio = s;
+            bairroAssociado->listaSensores->final = s;
+        }
+        else
+        {
+            bairroAssociado->listaSensores->final->prox = s;
+            bairroAssociado->listaSensores->final = s;
+        }
+
+    }
+
+    verificacao = NULL;
+    bairroAssociado = NULL;
+}
+
+void alterarStatusSensor (int codigoSensor, int codigoBairro, int novoStatus, listaBairros *B)
+{
+    //procurar o sensor dentro da lista associada ao bairro
+    Bairro *bairroAssociado = buscarBairro(codigoBairro, B);
+
+    if (bairroAssociado == NULL) 
+    {
+        printf("ERRO: Bairro %d não existe!\n", codigoBairro);
+        return;
+    }
+    
+    Sensor *sensorBuscado = buscarSensor(codigoSensor, bairroAssociado->listaSensores); //retorna o nó
+    if (sensorBuscado == NULL)
+    {
+        printf("ERRO: sensor não cadastrado!\n");
+        return;
+    }
+
+    sensorBuscado->status = novoStatus;
+
+    bairroAssociado = NULL;
+    sensorBuscado = NULL;
+    //TRAVAS DE SEGURANÇA + TRATAMENTO DE ERROS 
+}
+
+void listarSensoresBairro (int codigoBairro, listaBairros *B)
+{
+    Bairro *bairroAssociado = buscarBairro(codigoBairro, B);
+    if (bairroAssociado == NULL)
+    {
+        printf("ERRO: bairro não existe!\n");
+        return;
+    }
+
+    Sensor *navegador = bairroAssociado->listaSensores->inicio;
+
+    while (navegador != NULL)
+    {
+        printf("Codigo do sensor: %d\n", navegador->codigo);
+
+        switch (navegador->tipo)
+        {
+            case 1:
+            {
+                printf("Tipo do sensor: 1 - temperatura\n");
+            }break;
+            case 2:
+            {
+                printf("Tipo do sensor: 2 - enchente\n");
+            }break;
+            case 3:
+            {
+                printf("Tipo do sensor: 3 - fumaça\n");
+            }break;
+            case 4:
+            {
+                printf("Tipo do sensor: 4 - trânsito\n");
+            }break;
+            case 5:
+            {
+                printf("Tipo do sensor: 5 - iluminação pública\n");
+            }break;
+        }
+
+        switch (navegador->status)
+        {
+            case 1:
+                printf("Status do sensor: ativo\n");
+                break;
+            case 2:
+                printf("Status do sensor: manutenção\n");
+                break;
+            case 3:
+                printf("Status do sensor: offline\n");
+                break;
+        }
+
+        navegador = navegador->prox;
+    }
+
+    navegador = NULL;
+    bairroAssociado = NULL;
 }
