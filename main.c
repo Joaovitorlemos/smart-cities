@@ -50,6 +50,20 @@ typedef struct _listasensores{ //NÓ CABEÇA SENSOR
     Sensor *final;
 }listaSensores;
 
+typedef struct equipe{ //NÓ EQUIPE
+ int codigo;
+ char nome[50];
+ char especialidade[30];
+ int total_atendimentos;
+ Chamado *listaChamados;
+ struct equipe *prox;
+}Equipe;
+
+typedef struct listaEquipes{
+    Equipe *inicio;
+    Equipe *final;
+}listaEquipes;
+
 
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
@@ -82,9 +96,14 @@ void registrarOcorrencia (int codigo, int severidade, int status, int codigoSens
 void listarOcorrencias(listaBairros *B); //não tem parâmetros pq é uma varredura global. listar TODAS as ocorrências
 
 // ==========================================
-// EQUIPES E CHAMADOS
+// GERENCIAMENTO DE EQUIPES
 // ==========================================
-// (Funções de inserir, buscar e gerenciar equipes)
+listaEquipes *criarListaEquipes();
+Equipe *criarEquipe();
+Equipe *buscarEquipe (int codigo, listaEquipes *E);
+
+void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes *E);
+void associarEquipe (int codigoChamado, int codigoEquipe);
 
 // ==========================================
 // FUNÇÃO PRINCIPAL
@@ -552,3 +571,68 @@ void listarOcorrencias(listaBairros *B) //é um loop triplo -> pode melhorar?
         navegador1 = navegador1->prox;
     }
 }
+
+// ==========================================
+// GERENCIAMENTO DE EQUIPES
+// ==========================================
+listaEquipes *criarListaEquipes()
+{
+    listaEquipes *E = (listaEquipes *) calloc(1, sizeof(listaEquipes));
+
+    return E;
+}
+Equipe *criarEquipe()
+{
+    Equipe *e = (Equipe *) calloc(1, sizeof(Equipe));
+
+    return e;
+}
+
+Equipe *buscarEquipe (int codigo, listaEquipes *E)
+{
+    //verificar se nenhuma equipe foi inicializada OU se a lista de equipes está vazia
+    if (E == NULL || E->inicio == NULL && E->final == NULL)
+        return NULL;
+
+    Equipe *navegador = E->inicio;
+
+    while (navegador != NULL && navegador->codigo != codigo)
+        navegador = navegador->prox;
+
+    return navegador;
+}
+
+void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes *E)
+{
+    //verificar se já não existe um bairro com o código digitado
+    Equipe *verificacao = buscarEquipe (codigo, E);
+
+     if (verificacao != NULL)
+    {
+        printf("Equipe já existente!\n");
+        return;
+    }
+    else
+    {
+        //alocação do espaço + registro das informações
+        Equipe *e = criarEquipe();
+        e->codigo = codigo;
+        strcpy(e->nome, nome); //melhorar? jeito mais eficiente?
+        strcpy(e->especialidade, especialidade); //melhorar? jeito mais eficiente?
+        e->listaChamados = criarListaChamados();
+
+        //ONDE de fato alocar
+        if (E->inicio == NULL && E->final == NULL) //caso 1: primeira equipe a ser alocada
+        {
+            E->inicio = e;
+            E->final = e;
+        }
+        else
+        {
+            E->final->prox = e;
+            E->final = e;
+        }
+    }
+
+    verificacao = NULL; //limpeza da memória
+}   
