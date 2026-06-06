@@ -161,8 +161,8 @@ void cadastrarBairro (int codigo, char *nome, listaBairros *B) //equivalente a i
         //alocação do espaço + registro das informações
         Bairro *b = criarBairro();
         b->codigo = codigo;
-        strcpy(b->nome, nome); //melhorar? jeito mais eficiente?
-        b->listaSensores = criarListaSensor();
+        strncpy(b->nome, nome, sizeof(b->nome) - 1);
+        b->nome[sizeof(b->nome) - 1] = '\0';
 
         //ONDE de fato alocar
         if (B->inicio == NULL && B->final == NULL)
