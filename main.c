@@ -3,11 +3,6 @@
 #include <string.h>
 
 // ==========================================
-// MÁQUINA DE ESTADOS E LEITURA DE ARQUIVOS
-// ==========================================
-// (Funções de ler txt vão aqui)
-
-// ==========================================
 // STRUCTS
 // ==========================================
 typedef struct ocorrencia{ //NÓ OCORRÊNCIAS
@@ -63,6 +58,11 @@ typedef struct listaEquipes{
     Equipe *inicio;
     Equipe *final;
 }listaEquipes;
+
+// ==========================================
+// MÁQUINA DE ESTADOS E LEITURA DE ARQUIVOS
+// ==========================================
+// (Funções de ler txt vão aqui)
 
 
 // ==========================================
