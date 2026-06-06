@@ -8,12 +8,19 @@
 // (Funções de ler txt vão aqui)
 
 // ==========================================
-// BAIRROS E SENSORES (Área da Lívia)
+// STRUCTS
 // ==========================================
-// (Funções de inserir, buscar e remover bairro/sensor)
 
 // ==========================================
-// EQUIPES E CHAMADOS (Área da Dupla)
+// GERENCIAMENTO DE BAIRROS
+// ==========================================
+
+// ==========================================
+// GERENCIAMENTO DE SENSORES
+// ==========================================
+
+// ==========================================
+// EQUIPES E CHAMADOS
 // ==========================================
 // (Funções de inserir, buscar e gerenciar equipes)
 
@@ -22,6 +29,8 @@
 // ==========================================
 int main()
 {
-    puts("att name branch-livia");
+    /*
+     listaBairros *B = criarBairro();
+     */
     return 0;
 }
