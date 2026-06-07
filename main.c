@@ -63,7 +63,8 @@ typedef struct listaEquipes{
 // MÁQUINA DE ESTADOS E LEITURA DE ARQUIVOS
 // ==========================================
 // (Funções de ler txt vão aqui)
-
+void salvarBairros(listaBairros *B);
+void carregarBairros(listaBairros *B);
 
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
@@ -120,6 +121,73 @@ int main()
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
 // ==========================================
+void salvarBairros(listaBairros *B) {
+    if (B == NULL) return;
+
+    FILE *arquivo = fopen("bairros.txt", "w");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo para escrita!\n");
+        return;
+    }
+
+    Bairro *navegador = B->inicio;
+    char nomeTemporario[50];
+
+    while (navegador != NULL) {
+        // Copia o nome original para não alterá-lo na memória do programa
+        strncpy(nomeTemporario, navegador->nome, sizeof(nomeTemporario) - 1);
+        nomeTemporario[sizeof(nomeTemporario) - 1] = '\0';
+
+        // Varre a string trocando espaços por underline
+        for (int i = 0; nomeTemporario[i] != '\0'; i++) {
+            if (nomeTemporario[i] == ' ') {
+                nomeTemporario[i] = '_';
+            }
+        }
+
+        // Salva no arquivo com o underline. Ex: "1 Jardim_Carvalho"
+        fprintf(arquivo, "%d %s\n", navegador->codigo, nomeTemporario);
+        navegador = navegador->prox;
+    }
+
+    fclose(arquivo);
+    printf("Dados persistidos em 'bairros.txt' com sucesso!\n");
+}
+
+void carregarBairros(listaBairros *B) {
+    FILE *arquivo = fopen("bairros.txt", "r");
+    if (arquivo == NULL) {
+        printf("Arquivo 'bairros.txt' não encontrado. Iniciando lista vazia.\n");
+        return;
+    }
+
+    char linha[120]; 
+    int codigo;
+    char nome[50];
+
+    while (fgets(linha, sizeof(linha), arquivo) != NULL) {
+        // Como o nome não tem espaços no arquivo, podemos usar o %s simples no sscanf!
+        if (sscanf(linha, "%d %49s", &codigo, nome) == 2) {
+            
+            // Remove quebras de linha residuais
+            nome[strcspn(nome, "\r\n")] = '\0';
+
+            // Varre a string trocando os underlines de volta por espaços
+            for (int i = 0; nome[i] != '\0'; i++) {
+                if (nome[i] == '_') {
+                    nome[i] = ' ';
+                }
+            }
+            
+            // Cadastra na memória já com o formato correto: "Vila Nova"
+            cadastrarBairro(codigo, nome, B);
+        }
+    }
+
+    fclose(arquivo);
+    printf("Dados carregados com sucesso de 'bairros.txt'.\n");
+}
+
 listaBairros *criarListaBairros()
 {
     listaBairros *B = (listaBairros *) calloc(1, sizeof(listaBairros));
