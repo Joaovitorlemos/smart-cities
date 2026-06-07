@@ -6,11 +6,11 @@
 // STRUCTS
 // ==========================================
 typedef struct ocorrencia{ //NÓ OCORRÊNCIAS
- int codigo;
- int severidade;
- char descricao[100];
- int status;
- struct ocorrencia *prox;
+    int codigo;
+    int severidade;
+    char descricao[100];
+    int status;
+    struct ocorrencia *prox;
 }Ocorrencia;
 
 typedef struct listaOcorrencias{ //NÓ CABEÇA OCORRÊNCIAS
@@ -47,12 +47,12 @@ typedef struct _listaBairros{
 }listaBairros;
 
 typedef struct equipe{ //NÓ EQUIPE
- int codigo;
- char nome[50];
- char especialidade[30];
- int total_atendimentos;
- Chamado *listaChamados;
- struct equipe *prox;
+    int codigo;
+    char nome[50];
+    char especialidade[30];
+    int total_atendimentos;
+    //Chamado *listaChamados;
+    struct equipe *prox;
 }Equipe;
 
 typedef struct listaEquipes{
@@ -66,6 +66,9 @@ typedef struct listaEquipes{
 // (Funções de ler txt vão aqui)
 void salvarBairros(listaBairros *B);
 void carregarBairros(listaBairros *B);
+
+void salvarSensores(listaBairros *B);
+void carregarSensores(listaBairros *B);
 
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
@@ -112,9 +115,22 @@ void associarEquipe (int codigoChamado, int codigoEquipe);
 // ==========================================
 int main()
 {
-    /*
-     listaBairros *B = criarBairro();
-     */
+    listaBairros *B = criarListaBairros();
+    listaSensores *S = criarListaSensor();
+
+    carregarBairros(B);
+    carregarSensores(B);
+
+    cadastrarSensor(101, 1, 1, 1, B);
+    
+    listarBairros(B);
+    puts("");
+    listarSensoresBairro(1, B);
+
+    
+    salvarBairros(B);
+    salvarSensores(B);
+
 
     return 0;
 }
@@ -233,6 +249,9 @@ void cadastrarBairro (int codigo, char *nome, listaBairros *B) //equivalente a i
         strncpy(b->nome, nome, sizeof(b->nome) - 1);
         b->nome[sizeof(b->nome) - 1] = '\0';
 
+        // criar a lista de sensores associada a esse bairro no ato do cadastro do bairro
+        b->listaSensores = criarListaSensor();
+
         //ONDE de fato alocar
         if (B->inicio == NULL && B->final == NULL)
         {
@@ -325,6 +344,65 @@ void removerBairro (listaBairros *B, int codigo)
 // ==========================================
 // GERENCIAMENTO DE SENSORES
 // ==========================================
+void salvarSensores(listaBairros *B) {
+    if (B == NULL || B->inicio == NULL) return;
+
+    FILE *arquivo = fopen("sensores.txt", "w");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo 'sensores.txt' para escrita!\n");
+        return;
+    }
+
+    Bairro *bairroNavegador = B->inicio;
+
+    // Percorre cada bairro na memória
+    while (bairroNavegador != NULL) {
+        // Se o bairro tiver uma lista de sensores válida e não vazia
+        if (bairroNavegador->listaSensores != NULL && bairroNavegador->listaSensores->inicio != NULL) {
+            Sensor *sensorNavegador = bairroNavegador->listaSensores->inicio;
+
+            // Percorre todos os sensores deste bairro e salva no arquivo
+            while (sensorNavegador != NULL) {
+                // Formato exigido: codigo tipo status codigo_bairro
+                fprintf(arquivo, "%d %d %d %d\n", 
+                        sensorNavegador->codigo, 
+                        sensorNavegador->tipo, 
+                        sensorNavegador->status, 
+                        bairroNavegador->codigo);
+                
+                sensorNavegador = sensorNavegador->prox;
+            }
+        }
+        bairroNavegador = bairroNavegador->prox;
+    }
+
+    fclose(arquivo);
+    printf("Dados dos sensores persistidos em 'sensores.txt' com sucesso!\n");
+}
+
+void carregarSensores(listaBairros *B) {
+    FILE *arquivo = fopen("sensores.txt", "r");
+    if (arquivo == NULL) {
+        printf("Arquivo 'sensores.txt' não encontrado. Iniciando sem sensores mapeados.\n");
+        return;
+    }
+
+    char linha[120];
+    int codigoSensor, tipo, status, codigoBairro;
+
+    // Lê linha por linha do arquivo de sensores
+    while (fgets(linha, sizeof(linha), arquivo) != NULL) {
+        // Tenta extrair os 4 inteiros da linha
+        if (sscanf(linha, "%d %d %d %d", &codigoSensor, &tipo, &status, &codigoBairro) == 4) {
+            // Usa a sua função de cadastrar para alocar e vincular ao bairro correto
+            cadastrarSensor(codigoSensor, tipo, status, codigoBairro, B);
+        }
+    }
+
+    fclose(arquivo);
+    printf("Dados dos sensores carregados com sucesso de 'sensores.txt'.\n");
+}
+
 listaSensores *criarListaSensor ()
 {
     listaSensores *S = (listaSensores *) calloc(1, sizeof(listaSensores));
@@ -688,7 +766,7 @@ void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes 
         e->codigo = codigo;
         strcpy(e->nome, nome); //melhorar? jeito mais eficiente?
         strcpy(e->especialidade, especialidade); //melhorar? jeito mais eficiente?
-        e->listaChamados = criarListaChamados();
+        //e->listaChamados = criarListaChamados();
 
         //ONDE de fato alocar
         if (E->inicio == NULL && E->final == NULL) //caso 1: primeira equipe a ser alocada
