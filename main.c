@@ -23,11 +23,25 @@ typedef struct listaOcorrencias{ //NÓ CABEÇA OCORRÊNCIAS
     Ocorrencia *final;
 }listaOcorrencias;
 
+typedef struct sensor{ //NÓ SENSOR
+    int codigo;
+    int tipo;
+    int status;
+    listaOcorrencias *listaOcorrencias;
+    struct sensor *prox;
+}Sensor;
+
+typedef struct _listasensores{ //NÓ CABEÇA SENSOR
+    Sensor *inicio;
+    Sensor *final;
+}listaSensores;
+
+
 //NÓ BAIRRO
 typedef struct bairro{ //NÓ
     int codigo;
     char nome[50];
-    Sensor *listaSensores; //vai apontar para uma estrutura S->begin e S->end
+    listaSensores *listaSensores; //vai apontar para uma estrutura S->begin e S->end
     struct bairro *prox;
 }Bairro;
 
@@ -36,19 +50,6 @@ typedef struct _listaBairros{
     Bairro *inicio;
     Bairro *final;
 }listaBairros;
-
-typedef struct sensor{ //NÓ SENSOR
-    int codigo;
-    int tipo;
-    int status;
-    Ocorrencia *listaOcorrencias;
-    struct sensor *prox;
-}Sensor;
-
-typedef struct _listasensores{ //NÓ CABEÇA SENSOR
-    Sensor *inicio;
-    Sensor *final;
-}listaSensores;
 
 typedef struct equipe{ //NÓ EQUIPE
  int codigo;
