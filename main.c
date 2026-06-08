@@ -113,6 +113,13 @@ Equipe *buscarEquipe (int codigo, listaEquipes *E);
 void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes *E);
 void associarEquipe (int codigoChamado, int codigoEquipe);
 
+Chamado *criarChamado(); 
+listaChamados *criarListaChamados();
+Chamado *buscarChamado(int codigo, listaChamados *C);
+
+void gerarChamado (int codigo, int prioridade, int status);
+void finalizarChamado(int codigoChamado);
+
 // ==========================================
 // FUNÇÃO PRINCIPAL
 // ==========================================
