@@ -3,19 +3,14 @@
 #include <string.h>
 
 // ==========================================
-// MÁQUINA DE ESTADOS E LEITURA DE ARQUIVOS
-// ==========================================
-// (Funções de ler txt vão aqui)
-
-// ==========================================
 // STRUCTS
 // ==========================================
 typedef struct ocorrencia{ //NÓ OCORRÊNCIAS
- int codigo;
- int severidade;
- char descricao[100];
- int status;
- struct ocorrencia *prox;
+    int codigo;
+    int severidade;
+    char descricao[100];
+    int status;
+    struct ocorrencia *prox;
 }Ocorrencia;
 
 typedef struct listaOcorrencias{ //NÓ CABEÇA OCORRÊNCIAS
@@ -23,11 +18,25 @@ typedef struct listaOcorrencias{ //NÓ CABEÇA OCORRÊNCIAS
     Ocorrencia *final;
 }listaOcorrencias;
 
+typedef struct sensor{ //NÓ SENSOR
+    int codigo;
+    int tipo;
+    int status;
+    listaOcorrencias *listaOcorrencias;
+    struct sensor *prox;
+}Sensor;
+
+typedef struct _listasensores{ //NÓ CABEÇA SENSOR
+    Sensor *inicio;
+    Sensor *final;
+}listaSensores;
+
+
 //NÓ BAIRRO
 typedef struct bairro{ //NÓ
     int codigo;
     char nome[50];
-    Sensor *listaSensores; //vai apontar para uma estrutura S->begin e S->end
+    listaSensores *listaSensores; //vai apontar para uma estrutura S->begin e S->end
     struct bairro *prox;
 }Bairro;
 
@@ -37,19 +46,29 @@ typedef struct _listaBairros{
     Bairro *final;
 }listaBairros;
 
-typedef struct sensor{ //NÓ SENSOR
+typedef struct equipe{ //NÓ EQUIPE
     int codigo;
-    int tipo;
-    int status;
-    Ocorrencia *listaOcorrencias;
-    struct sensor *prox;
-}Sensor;
+    char nome[50];
+    char especialidade[30];
+    int total_atendimentos;
+    //Chamado *listaChamados;
+    struct equipe *prox;
+}Equipe;
 
-typedef struct _listasensores{ //NÓ CABEÇA SENSOR
-    Sensor *inicio;
-    Sensor *final;
-}listaSensores;
+typedef struct listaEquipes{
+    Equipe *inicio;
+    Equipe *final;
+}listaEquipes;
 
+// ==========================================
+// MÁQUINA DE ESTADOS E LEITURA DE ARQUIVOS
+// ==========================================
+// (Funções de ler txt vão aqui)
+void salvarBairros(listaBairros *B);
+void carregarBairros(listaBairros *B);
+
+void salvarSensores(listaBairros *B);
+void carregarSensores(listaBairros *B);
 
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
@@ -82,18 +101,36 @@ void registrarOcorrencia (int codigo, int severidade, int status, int codigoSens
 void listarOcorrencias(listaBairros *B); //não tem parâmetros pq é uma varredura global. listar TODAS as ocorrências
 
 // ==========================================
-// EQUIPES E CHAMADOS
+// GERENCIAMENTO DE EQUIPES
 // ==========================================
-// (Funções de inserir, buscar e gerenciar equipes)
+listaEquipes *criarListaEquipes();
+Equipe *criarEquipe();
+Equipe *buscarEquipe (int codigo, listaEquipes *E);
+
+void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes *E);
+void associarEquipe (int codigoChamado, int codigoEquipe);
 
 // ==========================================
 // FUNÇÃO PRINCIPAL
 // ==========================================
 int main()
 {
-    /*
-     listaBairros *B = criarBairro();
-     */
+    listaBairros *B = criarListaBairros();
+    listaSensores *S = criarListaSensor();
+
+    carregarBairros(B);
+    carregarSensores(B);
+
+    cadastrarSensor(101, 1, 1, 1, B);
+    
+    listarBairros(B);
+    puts("");
+    listarSensoresBairro(1, B);
+
+    
+    salvarBairros(B);
+    salvarSensores(B);
+
 
     return 0;
 }
@@ -101,6 +138,73 @@ int main()
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
 // ==========================================
+void salvarBairros(listaBairros *B) {
+    if (B == NULL) return;
+
+    FILE *arquivo = fopen("bairros.txt", "w");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo para escrita!\n");
+        return;
+    }
+
+    Bairro *navegador = B->inicio;
+    char nomeTemporario[50];
+
+    while (navegador != NULL) {
+        // Copia o nome original para não alterá-lo na memória do programa
+        strncpy(nomeTemporario, navegador->nome, sizeof(nomeTemporario) - 1);
+        nomeTemporario[sizeof(nomeTemporario) - 1] = '\0';
+
+        // Varre a string trocando espaços por underline
+        for (int i = 0; nomeTemporario[i] != '\0'; i++) {
+            if (nomeTemporario[i] == ' ') {
+                nomeTemporario[i] = '_';
+            }
+        }
+
+        // Salva no arquivo com o underline. Ex: "1 Jardim_Carvalho"
+        fprintf(arquivo, "%d %s\n", navegador->codigo, nomeTemporario);
+        navegador = navegador->prox;
+    }
+
+    fclose(arquivo);
+    printf("Dados persistidos em 'bairros.txt' com sucesso!\n");
+}
+
+void carregarBairros(listaBairros *B) {
+    FILE *arquivo = fopen("bairros.txt", "r");
+    if (arquivo == NULL) {
+        printf("Arquivo 'bairros.txt' não encontrado. Iniciando lista vazia.\n");
+        return;
+    }
+
+    char linha[120]; 
+    int codigo;
+    char nome[50];
+
+    while (fgets(linha, sizeof(linha), arquivo) != NULL) {
+        // Como o nome não tem espaços no arquivo, podemos usar o %s simples no sscanf!
+        if (sscanf(linha, "%d %49s", &codigo, nome) == 2) {
+            
+            // Remove quebras de linha residuais
+            nome[strcspn(nome, "\r\n")] = '\0';
+
+            // Varre a string trocando os underlines de volta por espaços
+            for (int i = 0; nome[i] != '\0'; i++) {
+                if (nome[i] == '_') {
+                    nome[i] = ' ';
+                }
+            }
+            
+            // Cadastra na memória já com o formato correto: "Vila Nova"
+            cadastrarBairro(codigo, nome, B);
+        }
+    }
+
+    fclose(arquivo);
+    printf("Dados carregados com sucesso de 'bairros.txt'.\n");
+}
+
 listaBairros *criarListaBairros()
 {
     listaBairros *B = (listaBairros *) calloc(1, sizeof(listaBairros));
@@ -142,7 +246,10 @@ void cadastrarBairro (int codigo, char *nome, listaBairros *B) //equivalente a i
         //alocação do espaço + registro das informações
         Bairro *b = criarBairro();
         b->codigo = codigo;
-        strcpy(b->nome, nome); //melhorar? jeito mais eficiente?
+        strncpy(b->nome, nome, sizeof(b->nome) - 1);
+        b->nome[sizeof(b->nome) - 1] = '\0';
+
+        // criar a lista de sensores associada a esse bairro no ato do cadastro do bairro
         b->listaSensores = criarListaSensor();
 
         //ONDE de fato alocar
@@ -237,6 +344,65 @@ void removerBairro (listaBairros *B, int codigo)
 // ==========================================
 // GERENCIAMENTO DE SENSORES
 // ==========================================
+void salvarSensores(listaBairros *B) {
+    if (B == NULL || B->inicio == NULL) return;
+
+    FILE *arquivo = fopen("sensores.txt", "w");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo 'sensores.txt' para escrita!\n");
+        return;
+    }
+
+    Bairro *bairroNavegador = B->inicio;
+
+    // Percorre cada bairro na memória
+    while (bairroNavegador != NULL) {
+        // Se o bairro tiver uma lista de sensores válida e não vazia
+        if (bairroNavegador->listaSensores != NULL && bairroNavegador->listaSensores->inicio != NULL) {
+            Sensor *sensorNavegador = bairroNavegador->listaSensores->inicio;
+
+            // Percorre todos os sensores deste bairro e salva no arquivo
+            while (sensorNavegador != NULL) {
+                // Formato exigido: codigo tipo status codigo_bairro
+                fprintf(arquivo, "%d %d %d %d\n", 
+                        sensorNavegador->codigo, 
+                        sensorNavegador->tipo, 
+                        sensorNavegador->status, 
+                        bairroNavegador->codigo);
+                
+                sensorNavegador = sensorNavegador->prox;
+            }
+        }
+        bairroNavegador = bairroNavegador->prox;
+    }
+
+    fclose(arquivo);
+    printf("Dados dos sensores persistidos em 'sensores.txt' com sucesso!\n");
+}
+
+void carregarSensores(listaBairros *B) {
+    FILE *arquivo = fopen("sensores.txt", "r");
+    if (arquivo == NULL) {
+        printf("Arquivo 'sensores.txt' não encontrado. Iniciando sem sensores mapeados.\n");
+        return;
+    }
+
+    char linha[120];
+    int codigoSensor, tipo, status, codigoBairro;
+
+    // Lê linha por linha do arquivo de sensores
+    while (fgets(linha, sizeof(linha), arquivo) != NULL) {
+        // Tenta extrair os 4 inteiros da linha
+        if (sscanf(linha, "%d %d %d %d", &codigoSensor, &tipo, &status, &codigoBairro) == 4) {
+            // Usa a sua função de cadastrar para alocar e vincular ao bairro correto
+            cadastrarSensor(codigoSensor, tipo, status, codigoBairro, B);
+        }
+    }
+
+    fclose(arquivo);
+    printf("Dados dos sensores carregados com sucesso de 'sensores.txt'.\n");
+}
+
 listaSensores *criarListaSensor ()
 {
     listaSensores *S = (listaSensores *) calloc(1, sizeof(listaSensores));
@@ -551,4 +717,69 @@ void listarOcorrencias(listaBairros *B) //é um loop triplo -> pode melhorar?
 
         navegador1 = navegador1->prox;
     }
+}
+
+// ==========================================
+// GERENCIAMENTO DE EQUIPES
+// ==========================================
+listaEquipes *criarListaEquipes()
+{
+    listaEquipes *E = (listaEquipes *) calloc(1, sizeof(listaEquipes));
+
+    return E;
+}
+Equipe *criarEquipe()
+{
+    Equipe *e = (Equipe *) calloc(1, sizeof(Equipe));
+
+    return e;
+}
+
+Equipe *buscarEquipe (int codigo, listaEquipes *E)
+{
+    //verificar se nenhuma equipe foi inicializada OU se a lista de equipes está vazia
+    if (E == NULL || E->inicio == NULL && E->final == NULL)
+        return NULL;
+
+    Equipe *navegador = E->inicio;
+
+    while (navegador != NULL && navegador->codigo != codigo)
+        navegador = navegador->prox;
+
+    return navegador;
+}
+
+void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes *E)
+{
+    //verificar se já não existe um bairro com o código digitado
+    Equipe *verificacao = buscarEquipe (codigo, E);
+
+     if (verificacao != NULL)
+    {
+        printf("Equipe já existente!\n");
+        return;
+    }
+    else
+    {
+        //alocação do espaço + registro das informações
+        Equipe *e = criarEquipe();
+        e->codigo = codigo;
+        strcpy(e->nome, nome); //melhorar? jeito mais eficiente?
+        strcpy(e->especialidade, especialidade); //melhorar? jeito mais eficiente?
+        //e->listaChamados = criarListaChamados();
+
+        //ONDE de fato alocar
+        if (E->inicio == NULL && E->final == NULL) //caso 1: primeira equipe a ser alocada
+        {
+            E->inicio = e;
+            E->final = e;
+        }
+        else
+        {
+            E->final->prox = e;
+            E->final = e;
+        }
+    }
+
+    verificacao = NULL; //limpeza da memória
 }
