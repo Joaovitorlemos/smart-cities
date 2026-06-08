@@ -70,6 +70,9 @@ void carregarBairros(listaBairros *B);
 void salvarSensores(listaBairros *B);
 void carregarSensores(listaBairros *B);
 
+void salvarOcorrencias(listaBairros *B);
+void carregarOcorrencias(listaBairros *B);
+
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
 // ==========================================
@@ -124,19 +127,16 @@ int main()
 {
     listaBairros *B = criarListaBairros();
     listaSensores *S = criarListaSensor();
+    listaOcorrencias *O = criarListaOcorrencias();
 
     carregarBairros(B);
     carregarSensores(B);
-
-    cadastrarSensor(101, 1, 1, 1, B);
-    
-    listarBairros(B);
-    puts("");
-    listarSensoresBairro(1, B);
+    carregarOcorrencias(B);
 
     
     salvarBairros(B);
     salvarSensores(B);
+    salvarOcorrencias(B);
 
 
     return 0;
@@ -572,6 +572,76 @@ void listarSensoresBairro (int codigoBairro, listaBairros *B)
 // ==========================================
 // REGISTRO DE OCORRENCIAS
 // ==========================================
+void salvarOcorrencias(listaBairros *B) {
+    if (B == NULL || B->inicio == NULL) return;
+
+    FILE *arquivo = fopen("ocorrencias.txt", "w");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo 'ocorrencias.txt' para escrita!\n");
+        return;
+    }
+
+    Bairro *bNav = B->inicio;
+    while (bNav != NULL) {
+        if (bNav->listaSensores != NULL) {
+            Sensor *sNav = bNav->listaSensores->inicio;
+            while (sNav != NULL) {
+                if (sNav->listaOcorrencias != NULL) {
+                    Ocorrencia *oNav = sNav->listaOcorrencias->inicio;
+                    while (oNav != NULL) {
+                        // Criar cópia da descrição para trocar espaços por underline
+                        char descTemp[100];
+                        strncpy(descTemp, oNav->descricao, 99);
+                        descTemp[99] = '\0';
+
+                        for (int i = 0; descTemp[i] != '\0'; i++) {
+                            if (descTemp[i] == ' ' || descTemp[i] == '\n' || descTemp[i] == '\r') 
+                                descTemp[i] = '_';
+                        }
+
+                        // Formato: codigo severidade status codigo_sensor codigo_bairro descricao
+                        fprintf(arquivo, "%d %d %d %d %d %s\n", 
+                                oNav->codigo, oNav->severidade, oNav->status, 
+                                sNav->codigo, bNav->codigo, descTemp);
+                        
+                        oNav = oNav->prox;
+                    }
+                }
+                sNav = sNav->prox;
+            }
+        }
+        bNav = bNav->prox;
+    }
+
+    fclose(arquivo);
+    printf("Dados das ocorrências persistidos com sucesso!\n");
+}
+
+void carregarOcorrencias(listaBairros *B) {
+    FILE *arquivo = fopen("ocorrencias.txt", "r");
+    if (arquivo == NULL) {
+        printf("Arquivo 'ocorrencias.txt' não encontrado.\n");
+        return;
+    }
+
+    int cod, sev, stat, codS, codB;
+    char desc[100];
+
+    // Formato esperado: %d %d %d %d %d %s
+    while (fscanf(arquivo, "%d %d %d %d %d %s", &cod, &sev, &stat, &codS, &codB, desc) == 6) {
+        // Voltar underlines para espaços
+        for (int i = 0; desc[i] != '\0'; i++) {
+            if (desc[i] == '_') desc[i] = ' ';
+        }
+
+        // Registra na memória vinculando aos IDs de sensor e bairro lidos
+        registrarOcorrencia(cod, sev, stat, codS, codB, desc, B);
+    }
+
+    fclose(arquivo);
+    printf("Dados das ocorrências carregados com sucesso!\n");
+}
+
 listaOcorrencias *criarListaOcorrencias() //usado na hora de cadastrar o sensor
 {  
     listaOcorrencias *O = (listaOcorrencias *) calloc(1, sizeof(listaOcorrencias));
