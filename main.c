@@ -86,6 +86,12 @@ void carregarSensores(listaBairros *B);
 void salvarOcorrencias(listaBairros *B);
 void carregarOcorrencias(listaBairros *B);
 
+void salvarEquipes(listaEquipes *E);
+void carregarEquipes(listaEquipes *E);
+
+// void salvarChamados(listaChamados *C, listaEquipes *E);
+// void carregarChamados(listaChamados *C, listaBairros *B, listaEquipes *E);
+
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
 // ==========================================
@@ -126,6 +132,9 @@ Equipe *buscarEquipe (int codigo, listaEquipes *E);
 void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes *E);
 void associarEquipe (int codigoChamado, int codigoEquipe);
 
+// ==========================================
+// GERENCIAMENTO DE CHAMADOS
+// ==========================================
 Chamado *criarChamado(); 
 listaChamados *criarListaChamados();
 Chamado *buscarChamado(int codigo, listaChamados *C);
@@ -141,15 +150,23 @@ int main()
     listaBairros *B = criarListaBairros();
     listaSensores *S = criarListaSensor();
     listaOcorrencias *O = criarListaOcorrencias();
+    listaEquipes *E = criarListaEquipes();
+    listaChamados *C = criarListaChamados();
 
     carregarBairros(B);
     carregarSensores(B);
     carregarOcorrencias(B);
+    carregarEquipes(E);
+    carregarChamados(C, B, E);
+
+    
 
     
     salvarBairros(B);
     salvarSensores(B);
     salvarOcorrencias(B);
+    salvarEquipes(E);
+    salvarChamados(C, E);
 
 
     return 0;
@@ -812,6 +829,70 @@ void listarOcorrencias(listaBairros *B) //é um loop triplo -> pode melhorar?
 // ==========================================
 // GERENCIAMENTO DE EQUIPES
 // ==========================================
+void salvarEquipes(listaEquipes *E) {
+    if (E == NULL || E->inicio == NULL) return;
+
+    FILE *arquivo = fopen("equipes.txt", "w");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo 'equipes.txt' para escrita!\n");
+        return;
+    }
+
+    Equipe *navegador = E->inicio;
+    while (navegador != NULL) {
+        char nomeTemp[50], especTemp[30];
+        
+        // Copia e troca espaços por underline no nome
+        strncpy(nomeTemp, navegador->nome, sizeof(nomeTemp) - 1);
+        nomeTemp[sizeof(nomeTemp) - 1] = '\0';
+        for (int i = 0; nomeTemp[i] != '\0'; i++) {
+            if (nomeTemp[i] == ' ') nomeTemp[i] = '_';
+        }
+
+        // Copia e troca espaços por underline na especialidade
+        strncpy(especTemp, navegador->especialidade, sizeof(especTemp) - 1);
+        especTemp[sizeof(especTemp) - 1] = '\0';
+        for (int i = 0; especTemp[i] != '\0'; i++) {
+            if (especTemp[i] == ' ') especTemp[i] = '_';
+        }
+
+        // Formato: codigo nome especialidade
+        fprintf(arquivo, "%d %s %s\n", navegador->codigo, nomeTemp, especTemp);
+        navegador = navegador->prox;
+    }
+
+    fclose(arquivo);
+    printf("Dados das equipes persistidos em 'equipes.txt' com sucesso!\n");
+}
+
+void carregarEquipes(listaEquipes *E) {
+    FILE *arquivo = fopen("equipes.txt", "r");
+    if (arquivo == NULL) {
+        printf("Arquivo 'equipes.txt' não encontrado.\n");
+        return;
+    }
+
+    int codigo;
+    char nome[50], especialidade[30];
+
+    // Lê os dados formatados (sem espaços)
+    while (fscanf(arquivo, "%d %s %s", &codigo, nome, especialidade) == 3) {
+        // Restaura espaços no nome
+        for (int i = 0; nome[i] != '\0'; i++) {
+            if (nome[i] == '_') nome[i] = ' ';
+        }
+        // Restaura espaços na especialidade
+        for (int i = 0; especialidade[i] != '\0'; i++) {
+            if (especialidade[i] == '_') especialidade[i] = ' ';
+        }
+        
+        cadastrarEquipe(codigo, nome, especialidade, E);
+    }
+
+    fclose(arquivo);
+    printf("Dados das equipes carregados com sucesso!\n");
+}
+
 listaEquipes *criarListaEquipes()
 {
     listaEquipes *E = (listaEquipes *) calloc(1, sizeof(listaEquipes));
@@ -872,4 +953,106 @@ void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes 
     }
 
     verificacao = NULL; //limpeza da memória
+}
+
+// ==========================================
+// GERENCIAMENTO DE CHAMADOS
+// ==========================================
+void salvarChamados(listaChamados *C, listaEquipes *E) {
+    if (C == NULL || C->inicio == NULL) return;
+
+    FILE *arquivo = fopen("chamados.txt", "w");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo 'chamados.txt' para escrita!\n");
+        return;
+    }
+
+    Chamado *cNav = C->inicio;
+    while (cNav != NULL) {
+        int codigo_equipe = 0;
+
+        // Descobrir qual equipe possui esse chamado associado (caso sua lógica vincule equipe->chamado)
+        // Se a associação for direta, use o código correspondente. Caso contrário, salvamos 0 ou o ID correto.
+        if (E != NULL) {
+            Equipe *eNav = E->inicio;
+            while (eNav != NULL) {
+                // Se no seu sistema a equipe aponta para o chamado ou vice-versa, faça a checagem aqui.
+                // Como na struct Equipe o campo 'listaChamados' está comentado, adapte se necessário:
+                eNav = eNav->prox;
+            }
+        }
+
+        int codOcorrencia = (cNav->ocorrencia != NULL) ? cNav->ocorrencia->codigo : 0;
+
+        // Formato: codigo codigo_ocorrencia codigo_equipe prioridade status
+        fprintf(arquivo, "%d %d %d %d %d\n", 
+                cNav->codigo, 
+                codOcorrencia, 
+                codigo_equipe, // Ajuste para salvar o ID real se houver vínculo mapeado
+                cNav->prioridade, 
+                cNav->status);
+
+        cNav = cNav->prox;
+    }
+
+    fclose(arquivo);
+    printf("Dados dos chamados persistidos em 'chamados.txt' com sucesso!\n");
+}
+
+void carregarChamados(listaChamados *C, listaBairros *B, listaEquipes *E) {
+    FILE *arquivo = fopen("chamados.txt", "r");
+    if (arquivo == NULL) {
+        printf("Arquivo 'chamados.txt' não encontrado.\n");
+        return;
+    }
+
+    int codigo, codOcorrencia, codEquipe, prioridade, status;
+
+    // Formato: %d %d %d %d %d
+    while (fscanf(arquivo, "%d %d %d %d %d", &codigo, &codOcorrencia, &codEquipe, &prioridade, &status) == 5) {
+        
+        // 1. Buscar o nó da ocorrência correspondente de forma global na memória
+        Ocorrencia *ocorrenciaEncontrada = NULL;
+        if (B != NULL && B->inicio != NULL) {
+            Bairro *bNav = B->inicio;
+            while (bNav != NULL && ocorrenciaEncontrada == NULL) {
+                if (bNav->listaSensores != NULL) {
+                    Sensor *sNav = bNav->listaSensores->inicio;
+                    while (sNav != NULL && ocorrenciaEncontrada == NULL) {
+                        if (sNav->listaOcorrencias != NULL) {
+                            ocorrenciaEncontrada = buscarOcorrencia(codOcorrencia, sNav->listaOcorrencias);
+                        }
+                        sNav = sNav->prox;
+                    }
+                }
+                bNav = bNav->prox;
+            }
+        }
+
+        // 2. Alocar o Chamado e restaurar os dados na lista
+        Chamado *novoChamado = (Chamado *) calloc(1, sizeof(Chamado));
+        if (novoChamado != NULL) {
+            novoChamado->codigo = codigo;
+            novoChamado->prioridade = prioridade;
+            novoChamado->status = status;
+            novoChamado->ocorrencia = ocorrenciaEncontrada; // Vincula ao nó real da memória
+
+            // Inserção na lista cabeça de chamados
+            if (C->inicio == NULL && C->final == NULL) {
+                C->inicio = novoChamado;
+                C->final = novoChamado;
+            } else {
+                C->final->prox = novoChamado;
+                C->final = novoChamado;
+            }
+
+            // 3. Se houver código de equipe associado (> 0), refaz o vínculo
+            if (codEquipe > 0 && E != NULL) {
+                // Aqui você pode chamar a sua função: associarEquipe(codigo, codEquipe);
+            }
+        }
+    }
+
+    fclose(arquivo);
+    printf("Dados dos chamados carregados com sucesso de 'chamados.txt'.\n");
 }
