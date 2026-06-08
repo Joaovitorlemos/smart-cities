@@ -782,4 +782,4 @@ void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes 
     }
 
     verificacao = NULL; //limpeza da memória
-} 
+}
