@@ -92,6 +92,12 @@ void carregarEquipes(listaEquipes *E);
 // void salvarChamados(listaChamados *C, listaEquipes *E);
 // void carregarChamados(listaChamados *C, listaBairros *B, listaEquipes *E);
 
+void salvarEquipes(listaEquipes *E);
+void carregarEquipes(listaEquipes *E);
+
+// void salvarChamados(listaChamados *C, listaEquipes *E);
+// void carregarChamados(listaChamados *C, listaBairros *B, listaEquipes *E);
+
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
 // ==========================================
@@ -135,6 +141,9 @@ void associarEquipe (int codigoChamado, int codigoEquipe);
 // ==========================================
 // GERENCIAMENTO DE CHAMADOS
 // ==========================================
+// ==========================================
+// GERENCIAMENTO DE CHAMADOS
+// ==========================================
 Chamado *criarChamado(); 
 listaChamados *criarListaChamados();
 Chamado *buscarChamado(int codigo, listaChamados *C);
@@ -152,10 +161,16 @@ int main()
     listaOcorrencias *O = criarListaOcorrencias();
     listaEquipes *E = criarListaEquipes();
     listaChamados *C = criarListaChamados();
+    listaEquipes *E = criarListaEquipes();
+    listaChamados *C = criarListaChamados();
 
     carregarBairros(B);
     carregarSensores(B);
     carregarOcorrencias(B);
+    carregarEquipes(E);
+    carregarChamados(C, B, E);
+
+    
     carregarEquipes(E);
     carregarChamados(C, B, E);
 
@@ -165,6 +180,8 @@ int main()
     salvarBairros(B);
     salvarSensores(B);
     salvarOcorrencias(B);
+    salvarEquipes(E);
+    salvarChamados(C, E);
     salvarEquipes(E);
     salvarChamados(C, E);
 
@@ -829,6 +846,70 @@ void listarOcorrencias(listaBairros *B) //é um loop triplo -> pode melhorar?
 // ==========================================
 // GERENCIAMENTO DE EQUIPES
 // ==========================================
+void salvarEquipes(listaEquipes *E) {
+    if (E == NULL || E->inicio == NULL) return;
+
+    FILE *arquivo = fopen("equipes.txt", "w");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo 'equipes.txt' para escrita!\n");
+        return;
+    }
+
+    Equipe *navegador = E->inicio;
+    while (navegador != NULL) {
+        char nomeTemp[50], especTemp[30];
+        
+        // Copia e troca espaços por underline no nome
+        strncpy(nomeTemp, navegador->nome, sizeof(nomeTemp) - 1);
+        nomeTemp[sizeof(nomeTemp) - 1] = '\0';
+        for (int i = 0; nomeTemp[i] != '\0'; i++) {
+            if (nomeTemp[i] == ' ') nomeTemp[i] = '_';
+        }
+
+        // Copia e troca espaços por underline na especialidade
+        strncpy(especTemp, navegador->especialidade, sizeof(especTemp) - 1);
+        especTemp[sizeof(especTemp) - 1] = '\0';
+        for (int i = 0; especTemp[i] != '\0'; i++) {
+            if (especTemp[i] == ' ') especTemp[i] = '_';
+        }
+
+        // Formato: codigo nome especialidade
+        fprintf(arquivo, "%d %s %s\n", navegador->codigo, nomeTemp, especTemp);
+        navegador = navegador->prox;
+    }
+
+    fclose(arquivo);
+    printf("Dados das equipes persistidos em 'equipes.txt' com sucesso!\n");
+}
+
+void carregarEquipes(listaEquipes *E) {
+    FILE *arquivo = fopen("equipes.txt", "r");
+    if (arquivo == NULL) {
+        printf("Arquivo 'equipes.txt' não encontrado.\n");
+        return;
+    }
+
+    int codigo;
+    char nome[50], especialidade[30];
+
+    // Lê os dados formatados (sem espaços)
+    while (fscanf(arquivo, "%d %s %s", &codigo, nome, especialidade) == 3) {
+        // Restaura espaços no nome
+        for (int i = 0; nome[i] != '\0'; i++) {
+            if (nome[i] == '_') nome[i] = ' ';
+        }
+        // Restaura espaços na especialidade
+        for (int i = 0; especialidade[i] != '\0'; i++) {
+            if (especialidade[i] == '_') especialidade[i] = ' ';
+        }
+        
+        cadastrarEquipe(codigo, nome, especialidade, E);
+    }
+
+    fclose(arquivo);
+    printf("Dados das equipes carregados com sucesso!\n");
+}
+
 void salvarEquipes(listaEquipes *E) {
     if (E == NULL || E->inicio == NULL) return;
 
