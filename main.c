@@ -46,6 +46,19 @@ typedef struct _listaBairros{
     Bairro *final;
 }listaBairros;
 
+typedef struct chamado{ //NÓ CHAMADO
+ int codigo;
+ int prioridade;
+ int status;
+ Ocorrencia *ocorrencia;
+ struct chamado *prox;
+}Chamado;
+
+typedef struct listaChamados{ //NÓ CABEÇA CHAMADO
+    Chamado *inicio;
+    Chamado *final;
+}listaChamados;
+
 typedef struct equipe{ //NÓ EQUIPE
     int codigo;
     char nome[50];
