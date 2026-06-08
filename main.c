@@ -50,7 +50,7 @@ typedef struct chamado{ //NÓ CHAMADO
  int codigo;
  int prioridade;
  int status;
- Ocorrencia *ocorrencia;
+ Ocorrencia *Ocorrencia;
  struct chamado *prox;
 }Chamado;
 
@@ -64,7 +64,7 @@ typedef struct equipe{ //NÓ EQUIPE
     char nome[50];
     char especialidade[30];
     int total_atendimentos;
-    Chamado *listaChamados;
+    struct listaChamados *listaChamados;
     struct equipe *prox;
 }Equipe;
 
@@ -118,6 +118,7 @@ void listarSensoresBairro (int codigoBairro, listaBairros *B);
 listaOcorrencias *criarListaOcorrencias();
 Ocorrencia *criarOcorrencia();
 Ocorrencia *buscarOcorrencia(int codigo, listaOcorrencias *O);
+Ocorrencia *buscarOcorrenciaGlobal(int codigoOcorrencia, listaBairros *B);
 
 void registrarOcorrencia (int codigo, int severidade, int status, int codigoSensor, int codigoBairro, char *descricao, listaBairros *B, listaChamados *chamadosPendentes);
 void listarOcorrencias(listaBairros *B); //não tem parâmetros pq é uma varredura global. listar TODAS as ocorrências
@@ -130,14 +131,14 @@ Equipe *criarEquipe();
 Equipe *buscarEquipe (int codigo, listaEquipes *E);
 
 void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes *E);
-void associarEquipe (int codigoChamado, int codigoEquipe);
+void associarEquipe(int codigoChamado, int codigoEquipe, listaChamados *C, listaEquipes *E);
 
 Chamado *criarChamado(); 
 listaChamados *criarListaChamados();
 Chamado *buscarChamado(int codigo, listaChamados *C);
 
-void gerarChamado(int codigo, int prioridade, Ocorrencia *o, listaChamados *C);
-void finalizarChamado(int codigoChamado);
+void gerarChamado(int codigo, int codigoOcorrencia, int prioridade, int status, listaChamados *C, listaBairros *B);
+void finalizarChamado(int codigoChamado, listaEquipes *E);
 
 // ==========================================
 // FUNÇÃO PRINCIPAL
@@ -151,14 +152,18 @@ int main()
     listaChamados *C = criarListaChamados();
 
     carregarBairros(B);
+    puts("");
     carregarSensores(B);
+    puts("");
     carregarOcorrencias(B);
+    puts("");
     carregarEquipes(E);
+    puts("");
     carregarChamados(C, B, E);
+    puts("");
 
-    
-    carregarEquipes(E);
-    carregarChamados(C, B, E);
+
+    gerarChamado(5001, 1001, 0, 4, C, B);
 
     
     salvarBairros(B);
@@ -545,7 +550,7 @@ void alterarStatusSensor (int codigoSensor, int codigoBairro, int novoStatus, li
             static int idChamadoSensor = 9000; 
             
             // 3. Chamamos a sua fábrica normal, sem mexer nela!
-            gerarChamado(idChamadoSensor, ocorrenciaManutencao, chamadosPendentes);
+            gerarChamado(idChamadoSensor, (codigoSensor * 100), 1, 1, chamadosPendentes, B);
             
             printf("ALERTA: Sensor %d offline! Chamado de Manutenção %d gerado com sucesso.\n", codigoSensor, idChamadoSensor);
             
@@ -681,7 +686,7 @@ void carregarOcorrencias(listaBairros *B) {
         }
 
         // Registra na memória vinculando aos IDs de sensor e bairro lidos
-        registrarOcorrencia(cod, sev, stat, codS, codB, desc, B);
+        registrarOcorrencia(cod, sev, stat, codS, codB, desc, B, NULL);
     }
 
     fclose(arquivo);
@@ -717,6 +722,29 @@ Ocorrencia *buscarOcorrencia(int codigo, listaOcorrencias *O)
     }
 
     return navegador; 
+}
+
+Ocorrencia *buscarOcorrenciaGlobal(int codigoOcorrencia, listaBairros *B) {
+    if (B == NULL || B->inicio == NULL) return NULL;
+
+    Bairro *bNav = B->inicio;
+    while (bNav != NULL) {
+        if (bNav->listaSensores != NULL) {
+            Sensor *sNav = bNav->listaSensores->inicio;
+            while (sNav != NULL) {
+                if (sNav->listaOcorrencias != NULL) {
+                    // Aqui usamos a sua função original, pois temos a lista de ocorrências do sensor
+                    Ocorrencia *oEncontrada = buscarOcorrencia(codigoOcorrencia, sNav->listaOcorrencias);
+                    if (oEncontrada != NULL) {
+                        return oEncontrada; // Encontrou! Retorna o ponteiro dela
+                    }
+                }
+                sNav = sNav->prox;
+            }
+        }
+        bNav = bNav->prox;
+    }
+    return NULL; // Se percorrer tudo e não achar nada
 }
 
 void registrarOcorrencia (int codigo, int severidade, int status, int codigoSensor, int codigoBairro, char *descricao, listaBairros *B, listaChamados *chamadosPendentes)
@@ -767,16 +795,13 @@ void registrarOcorrencia (int codigo, int severidade, int status, int codigoSens
     }
 
     // GERAÇÃO AUTOMÁTICA DO CHAMADO
-    if (severidade == 4)
-    {
-        // int idChamadoAutomatico = 1000; 
-
-        printf("ALERTA: Ocorrência grave registrada!\n");
-        
-        gerarChamado(idChamadoAutomatico, codigo, 4, 1,  o, chamadosPendentes);
-        
-        // idChamadoAutomatico++;
-    }
+   if (severidade == 4)
+{
+    static int idChamadoAutomatico = 1000; 
+    printf("ALERTA: Ocorrência grave registrada!\n");
+    gerarChamado(idChamadoAutomatico, codigo, 4, 1, chamadosPendentes, B);
+    idChamadoAutomatico++;
+}
 
     bairroAssociado = NULL;
     sensorAssociado = NULL;
@@ -999,7 +1024,7 @@ listaChamados *criarListaChamados()
 Chamado *buscarChamado(int codigo, listaChamados *C)
 {
     //trava de segurança
-    if (C == NULL || C->inicio == NULL && C->end == NULL)
+    if (C == NULL || C->inicio == NULL && C->final == NULL)
         return NULL;
 
     Chamado *navegador = C->inicio;
@@ -1029,7 +1054,6 @@ void gerarChamado(int codigo, int codigoOcorrencia, int prioridade, int status, 
     // 3. Alocação e Preenchimento
     Chamado *c = criarChamado();
     c->codigo = codigo;
-    c->codigoOcorrencia = codigoOcorrencia;
     c->prioridade = prioridade;
     c->status = status;
     c->Ocorrencia = ocorrenciaEncontrada;
@@ -1069,7 +1093,7 @@ void associarEquipe(int codigoChamado, int codigoEquipe, listaChamados *C, lista
     Chamado *anterior = NULL;
 
     //navegação até achar o chamado com o código correspondente
-    while (navegador != NULL && Navegador->codigo != codigoChamado)
+    while (navegador != NULL && navegador->codigo != codigoChamado)
     {
         anterior = navegador;
         navegador = navegador->prox;
@@ -1143,7 +1167,7 @@ void finalizarChamado(int codigoChamado, listaEquipes *E)
     while (navegadorEquipe != NULL) 
     {
         // trava de segurança: verifica se a equipe tem uma lista de chamados e se a lista de chamados possui chamados cadastrados
-        if (navegadorEquipe->listaChamados != NULL && navEquipe->listaChamados->inicio != NULL) 
+        if (navegadorEquipe->listaChamados != NULL && navegadorEquipe->listaChamados->inicio != NULL) 
         {
             Chamado *navegadorChamado = navegadorEquipe->listaChamados->inicio;
             Chamado *anterior = NULL; // mantém o link da lista quando remove o chamado
@@ -1152,14 +1176,14 @@ void finalizarChamado(int codigoChamado, listaEquipes *E)
             while (navegadorChamado != NULL && navegadorChamado->codigo != codigoChamado) 
             {
                 anterior = navegadorChamado;
-                navegadorChamado = navavegadorChamado->prox;
+                navegadorChamado = navegadorChamado->prox;
             }
 
             // 1.2) chamado encontrado
             if (navegadorChamado != NULL) 
             {
-                navegadorEquipe->qntdAtendimento++; // Incrementa os atendimentos da equipe
-                navegadorChamado->ocorrencia->status = 3; // ocorrência resolvida
+                navegadorEquipe->total_atendimentos++; // Incrementa os atendimentos da equipe
+                navegadorChamado->Ocorrencia->status = 3; // ocorrência resolvida
                 
                 // 1.3) REMOÇÃO DO CHAMADO DA LISTA DE CHAMADOS DA EQUIPE
                 if (anterior == NULL) {
@@ -1177,7 +1201,7 @@ void finalizarChamado(int codigoChamado, listaEquipes *E)
                 }
 
                 // deleta o chamado da memória
-                free(navChamado); // Destrói a prancheta para liberar memória
+                free(navegadorChamado); // Destrói a prancheta para liberar memória
                 
                 printf("Sucesso: Chamado %d finalizado pela equipe %s!\n", codigoChamado, navegadorEquipe->nome);
                 return;
@@ -1215,7 +1239,7 @@ void salvarChamados(listaChamados *C, listaEquipes *E) {
             }
         }
 
-        int codOcorrencia = (cNav->ocorrencia != NULL) ? cNav->ocorrencia->codigo : 0;
+        int codOcorrencia = (cNav->Ocorrencia != NULL) ? cNav->Ocorrencia->codigo : 0;
 
         // Formato: codigo codigo_ocorrencia codigo_equipe prioridade status
         fprintf(arquivo, "%d %d %d %d %d\n", 
@@ -1268,7 +1292,7 @@ void carregarChamados(listaChamados *C, listaBairros *B, listaEquipes *E) {
             novoChamado->codigo = codigo;
             novoChamado->prioridade = prioridade;
             novoChamado->status = status;
-            novoChamado->ocorrencia = ocorrenciaEncontrada; // Vincula ao nó real da memória
+            novoChamado->Ocorrencia = ocorrenciaEncontrada; // Vincula ao nó real da memória
 
             // Inserção na lista cabeça de chamados
             if (C->inicio == NULL && C->final == NULL) {
