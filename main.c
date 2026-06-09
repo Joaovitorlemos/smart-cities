@@ -145,6 +145,12 @@ void finalizarChamado(int codigoChamado, listaEquipes *E);
 // ==========================================
 int main()
 {
+    int opcao; //leitura das opções
+    int codBairro = 1000, codSensor = 2000, codOcorrencia = 3000, codChamado = 4000, codEquipe = 5000;
+    int codBuscaBairro, codRemoverBairro;
+    int tipoSensor, statusSensor, codBairroSensor;
+    char nomeBairro[50];
+    
     listaBairros *B = criarListaBairros();
     listaSensores *S = criarListaSensor();
     listaOcorrencias *O = criarListaOcorrencias();
@@ -152,18 +158,11 @@ int main()
     listaChamados *C = criarListaChamados();
 
     carregarBairros(B);
-    puts("");
     carregarSensores(B);
-    puts("");
     carregarOcorrencias(B);
-    puts("");
     carregarEquipes(E);
-    puts("");
     carregarChamados(C, B, E);
-    puts("");
 
-
-    gerarChamado(5001, 1001, 0, 4, C, B);
 
     
     salvarBairros(B);
@@ -171,6 +170,182 @@ int main()
     salvarOcorrencias(B);
     salvarEquipes(E);
     salvarChamados(C, E);
+
+        do
+    {
+        printf("==================\nGERENCIAMENTO DE BAIRROS\n==================\n");
+        printf("01)Cadastrar bairro\n02)Buscar bairro\n03)Listar bairros cadastrados\n04)Remover bairro\n");
+        printf("\n");
+
+        printf("==================\nGERENCIAMENTO DE SENSORES\n==================\n");
+        printf("05)Cadastrar sensor\n06)Alterar status de sensor\n07)Buscar sensor\n08)Listar sensor por bairro\n");
+        printf("\n");
+
+        printf("==================\nGERENCIAMENTO DE OCORRÊNCIAS\n==================\n");
+        printf("09)Registrar ocorrência\n");
+        printf("\n");
+
+        printf("==================\nGERENCIAMENTO DE EQUIPES\n==================\n");
+        printf("10)Cadastrar equipe\n11)Associar chamado a equipe\n12)Finalizar atendimento\n");
+        printf("\n");
+
+        printf("13)Modo simulação\n14)Relatório final\n15)Sair\n");
+        printf("\n");
+
+        printf("Opção selecionada: ");
+        scanf("%d", &opcao);
+
+        switch (opcao)
+        {
+            case 1:
+            {
+                printf("Informe o nome do bairro a ser cadastrado: ");
+                scanf("%s", nomeBairro);
+
+                printf("Código gerado para o bairro: %d\n", codBairro);
+
+                cadastrarBairro(codBairro, nomeBairro, listaGlobalBairros);
+                codBairro++;
+            }break;
+            case 2:
+            {
+                printf("Informe o código do bairro a ser buscado: ");
+                scanf("%d", &codBuscaBairro);
+
+                buscarBairro(codBuscaBairro, listaGlobalBairros);
+            }break;
+            case 3:
+            {
+                listarBairros(listaGlobalBairros);
+            }break;
+            case 4:
+            {
+                printf("Informe o código do bairro a ser removido: ");
+                scanf("%d", &codRemoverBairro);
+
+                removerBairro(listaGlobalBairros, codRemoverBairro);
+            }break;
+            case 5:
+            {
+                printf("Informe o tipo do sensor:\n01)Temperatura\n02)Enchente\n03)Fumaca\n04)Transito\n05)Iluminacao_Publica\nTipo do sensor: ");
+                scanf("%d", &tipoSensor);
+
+                printf("Informe o status do sensor:\n01)Ativo\n02)Manutenção\n03)Offline\nAtual status do sensor: ");
+                scanf("%d", &statusSensor);
+
+                printf("Digite o código do bairro correspondente: ");
+                scanf("%d", &codBairroSensor);
+
+                printf("Código gerado para o sensor: %d\n", codSensor);
+
+                cadastrarSensor(codSensor, tipoSensor, statusSensor, codBairroSensor, listaGlobalBairros);
+                codSensor++;
+            }break;
+            case 6:
+            {
+                int codSensorStatus, codBairroStatus, novoStatus;
+                printf("Informe o código do sensor cujo status será alterado: ");
+                scanf("%d", &codSensorStatus);
+
+                printf("Informe o código do bairro cujo sensor pertence: ");
+                scanf("%d", &codBairroStatus);
+
+                printf("Informe o novo status do sensor: ");
+                scanf("%d", &novoStatus);
+
+                alterarStatusSensor(codSensorStatus, codBairroStatus, novoStatus, listaGlobalBairros, chamadosPendentes);
+            }break;
+            case 7:
+            {
+                int codBuscaSensor;
+
+                printf("Informe o código do sensor a ser buscado: ");
+                scanf("%d", &codBuscaSensor);
+
+                buscaSensor(codBuscaSensor, listaGlobalBairros);
+            }break;
+            case 8:
+            {
+                int codBairroListaSensores;
+                printf("Informe o código do bairro que tem os sensores: ");
+                scanf("%d", &codBairroListaSensores);
+
+                listarSensoresBairros(codBairroListaSensores, listaGlobalBairros);
+            }break;
+            case 9:
+            {
+                int codBairroAssociadoOcorrencia, severidadeOcorrencia, codSensorAssociadoOcorrencia;
+                printf("Informe a severidade da ocorrência:\n01)Baixa\n02)Média\n03)Alta\n04)Crítica\nSeveridade da ocorrência: ");
+                scanf("%d", &severidadeOcorrencia);
+
+                printf("Informe o código do sensor associado: ");
+                scanf("%d", &codSensorAssociadoOcorrencia);
+
+                printf("Informe o código do bairro associado: ");
+                scanf("%d", &codBairroAssociadoOcorrencia);
+
+                registrarOcorrencia(codOcorrencia, severidadeOcorrencia, 1, codSensorAssociadoOcorrencia, codBairroAssociadoOcorrencia, descricaoOcorrencia, listaGlobalBairros, chamadosPendentes);
+                codOcorrencia++;
+            }break;
+            case 10:
+            {
+                char nomeEquipe[50], especialidadeEquipe[50];
+
+                printf("Informe o nome da equipe: ");
+                scanf("%s", nomeEquipe);
+
+                printf("Informe a especialidade da equipe: ");
+                scanf("%s", especialidadeEquipe);
+
+                printf("Equipe registrada com o código: %d\n", codEquipe);
+
+                cadastrarEquipe(codEquipe, nomeEquipe, especialidadeEquipe, listaGlobalEquipes);
+                codEquipe++;
+            }break;
+            case 11:
+            {
+                int codChamadoAssociar, codEquipeAssociar;
+
+                printf("Informe o código do chamado: ");
+                scanf("%d", &codChamadoAssociar);
+
+                printf("Informe o código da equipe: ");
+                scanf("%d", &codEquipeAssociar);
+
+                associarEquipe(codChamadoAssociar, codEquipeAssociar, listaGlobalEquipes);
+
+            }break;
+            case 12:
+            {
+                int codChamadoFinalizado;
+
+                printf("Informe o código do chamado: ");
+                scanf("%d", codChamadoFinalizado);
+
+                finalizarChamado(codChamadoFinalizado, listaGlobalEquipes);
+
+            }break;
+            case 13:
+            {
+
+            }break;
+            case 14:
+            {
+
+            }break;
+            case 15:
+            {
+
+            }break;
+            default:
+            {
+                printf("Opção inválida! Digite novamente\n");
+            }break;
+            
+        }
+
+    }
+    while (opcao != 15);
 
     return 0;
 }
