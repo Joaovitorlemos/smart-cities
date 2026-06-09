@@ -110,6 +110,7 @@ void removerBairro (listaBairros *B, int codigo);
 listaSensores *criarListaSensor ();
 Sensor *criarSensor ();
 Sensor *buscarSensor (int codigo, listaSensores *S);
+Sensor *buscarSensorGlobal(int codigoSensor, listaBairros *B);
 
 void cadastrarSensor (int codigoSensor, int tipo, int status, int codigoBairro, listaBairros *B);
 void alterarStatusSensor (int codigoSensor, int codigoBairro, int novoStatus, listaBairros *B, listaChamados *chamadosPendentes);
@@ -152,15 +153,18 @@ int main()
     int codBuscaBairro, codRemoverBairro;
     int tipoSensor, statusSensor, codBairroSensor;
     char nomeBairro[50];
-    listaBairros *listaGlobalBairros = criarListaBairros();
-    listaEquipes *listaGlobalEquipes = criarListaEquipes();
-    listaChamados *chamadosPendentes = criarListaChamados();
-    
+
+    // USAR APENAS ESSAS LISTAS NO PROGRAMA INTEIRO
     listaBairros *B = criarListaBairros();
-    listaSensores *S = criarListaSensor();
-    listaOcorrencias *O = criarListaOcorrencias();
     listaEquipes *E = criarListaEquipes();
-    listaChamados *C = criarListaChamados();
+    listaChamados *C = criarListaChamados(); // Fila de chamados pendentes/globais
+
+    // Carrega os dados direto nelas
+    carregarBairros(B);
+    carregarSensores(B);
+    carregarOcorrencias(B);
+    carregarEquipes(E);
+    carregarChamados(C, B, E);
 
     do
     {
@@ -195,7 +199,7 @@ int main()
 
                 printf("Código gerado para o bairro: %d\n", codBairro);
 
-                cadastrarBairro(codBairro, nomeBairro, listaGlobalBairros);
+                cadastrarBairro(codBairro, nomeBairro, B);
                 codBairro++;
             }break;
             case 2:
@@ -203,18 +207,18 @@ int main()
                 printf("Informe o código do bairro a ser buscado: ");
                 scanf("%d", &codBuscaBairro);
 
-                buscarBairro(codBuscaBairro, listaGlobalBairros);
+                buscarBairro(codBuscaBairro, B);
             }break;
             case 3:
             {
-                listarBairros(listaGlobalBairros);
+                listarBairros(B);
             }break;
             case 4:
             {
                 printf("Informe o código do bairro a ser removido: ");
                 scanf("%d", &codRemoverBairro);
 
-                removerBairro(listaGlobalBairros, codRemoverBairro);
+                removerBairro(B, codRemoverBairro);
             }break;
             case 5:
             {
@@ -229,7 +233,7 @@ int main()
 
                 printf("Código gerado para o sensor: %d\n", codSensor);
 
-                cadastrarSensor(codSensor, tipoSensor, statusSensor, codBairroSensor, listaGlobalBairros);
+                cadastrarSensor(codSensor, tipoSensor, statusSensor, codBairroSensor, B);
                 codSensor++;
             }break;
             case 6:
@@ -244,28 +248,36 @@ int main()
                 printf("Informe o novo status do sensor: ");
                 scanf("%d", &novoStatus);
 
-                alterarStatusSensor(codSensorStatus, codBairroStatus, novoStatus, listaGlobalBairros, chamadosPendentes);
+                alterarStatusSensor(codSensorStatus, codBairroStatus, novoStatus, B, C);
             }break;
             case 7:
-            {
-                int codBuscaSensor;
+         {
+             int codBuscaSensor;
 
-                printf("Informe o código do sensor a ser buscado: ");
-                scanf("%d", &codBuscaSensor);
+             printf("Informe o código do sensor a ser buscado: ");
+             scanf("%d", &codBuscaSensor);
 
-                buscaSensor(codBuscaSensor, listaGlobalBairros);
-            }break;
+             Sensor *s = buscarSensorGlobal(codBuscaSensor, B);
+
+             if (s != NULL) {
+                 printf("Sensor %d encontrado!\n", s->codigo);
+             } else {
+                 printf("Sensor não encontrado no sistema.\n");
+             }
+         }break;
             case 8:
             {
                 int codBairroListaSensores;
                 printf("Informe o código do bairro que tem os sensores: ");
                 scanf("%d", &codBairroListaSensores);
 
-                listarSensoresBairros(codBairroListaSensores, listaGlobalBairros);
+                listarSensoresBairro(codBairroListaSensores, B);
             }break;
             case 9:
             {
                 int codBairroAssociadoOcorrencia, severidadeOcorrencia, codSensorAssociadoOcorrencia;
+                char descricaoOcorrencia[100];
+
                 printf("Informe a severidade da ocorrência:\n01)Baixa\n02)Média\n03)Alta\n04)Crítica\nSeveridade da ocorrência: ");
                 scanf("%d", &severidadeOcorrencia);
 
@@ -275,7 +287,10 @@ int main()
                 printf("Informe o código do bairro associado: ");
                 scanf("%d", &codBairroAssociadoOcorrencia);
 
-                registrarOcorrencia(codOcorrencia, severidadeOcorrencia, 1, codSensorAssociadoOcorrencia, codBairroAssociadoOcorrencia, descricaoOcorrencia, listaGlobalBairros, chamadosPendentes);
+                printf("Informe a descrição da ocorrência: ");
+                scanf("%s", descricaoOcorrencia);
+
+                registrarOcorrencia(codOcorrencia, severidadeOcorrencia, 1, codSensorAssociadoOcorrencia, codBairroAssociadoOcorrencia, descricaoOcorrencia, B, C);
                 codOcorrencia++;
             }break;
             case 10:
@@ -290,7 +305,7 @@ int main()
 
                 printf("Equipe registrada com o código: %d\n", codEquipe);
 
-                cadastrarEquipe(codEquipe, nomeEquipe, especialidadeEquipe, listaGlobalEquipes);
+                cadastrarEquipe(codEquipe, nomeEquipe, especialidadeEquipe, E);
                 codEquipe++;
             }break;
             case 11:
@@ -303,7 +318,7 @@ int main()
                 printf("Informe o código da equipe: ");
                 scanf("%d", &codEquipeAssociar);
 
-                associarEquipe(codChamadoAssociar, codEquipeAssociar, listaGlobalEquipes);
+                associarEquipe(codChamadoAssociar, codEquipeAssociar, C, E);
 
             }break;
             case 12:
@@ -311,9 +326,9 @@ int main()
                 int codChamadoFinalizado;
 
                 printf("Informe o código do chamado: ");
-                scanf("%d", codChamadoFinalizado);
+                scanf("%d", &codChamadoFinalizado);
 
-                finalizarChamado(codChamadoFinalizado, listaGlobalEquipes);
+                finalizarChamado(codChamadoFinalizado, E);
 
             }break;
             case 13:
@@ -322,7 +337,7 @@ int main()
             }break;
             case 14:
             {
-
+                gerarRelatorioFinal(B, E);
             }break;
             case 15:
             {
@@ -337,6 +352,13 @@ int main()
 
     }
     while (opcao != 15);
+
+    // Salvando as alterações antes de sair do programa
+    salvarBairros(B);
+    salvarSensores(B);
+    salvarOcorrencias(B);
+    salvarEquipes(E);
+    salvarChamados(C, E);
 
     return 0;
 }
@@ -550,6 +572,23 @@ void removerBairro (listaBairros *B, int codigo)
 // ==========================================
 // GERENCIAMENTO DE SENSORES
 // ==========================================
+Sensor *buscarSensorGlobal(int codigoSensor, listaBairros *B) {
+    if (B == NULL || B->inicio == NULL) return NULL;
+
+    Bairro *bNav = B->inicio;
+    while (bNav != NULL) {
+        if (bNav->listaSensores != NULL) {
+            // Procura o sensor na lista interna deste bairro específico
+            Sensor *sEncontrado = buscarSensor(codigoSensor, bNav->listaSensores);
+            if (sEncontrado != NULL) {
+                return sEncontrado; // Retorna se encontrar
+            }
+        }
+        bNav = bNav->prox;
+    }
+    return NULL; // Se percorrer tudo e não achar
+}
+
 void salvarSensores(listaBairros *B) {
     if (B == NULL || B->inicio == NULL) return;
 
@@ -1156,7 +1195,7 @@ void cadastrarEquipe (int codigo, char *nome, char *especialidade, listaEquipes 
         e->codigo = codigo;
         strcpy(e->nome, nome); //melhorar? jeito mais eficiente?
         strcpy(e->especialidade, especialidade); //melhorar? jeito mais eficiente?
-        //e->listaChamados = criarListaChamados();
+        e->listaChamados = criarListaChamados();
 
         //ONDE de fato alocar
         if (E->inicio == NULL && E->final == NULL) //caso 1: primeira equipe a ser alocada
