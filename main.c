@@ -411,10 +411,8 @@ void carregarBairros(listaBairros *B) {
     char nome[50];
 
     while (fgets(linha, sizeof(linha), arquivo) != NULL) {
-        // Como o nome não tem espaços no arquivo, podemos usar o %s simples no sscanf!
         if (sscanf(linha, "%d %49s", &codigo, nome) == 2) {
             
-            // Remove quebras de linha residuais
             nome[strcspn(nome, "\r\n")] = '\0';
 
             // Varre a string trocando os underlines de volta por espaços
@@ -424,7 +422,6 @@ void carregarBairros(listaBairros *B) {
                 }
             }
             
-            // Cadastra na memória já com o formato correto: "Vila Nova"
             cadastrarBairro(codigo, nome, B);
         }
     }
@@ -855,7 +852,7 @@ void salvarOcorrencias(listaBairros *B) {
                                 descTemp[i] = '_';
                         }
 
-                        // Formato: codigo severidade status codigo_sensor codigo_bairro descricao
+                        // codigo severidade status codigo_sensor codigo_bairro descricao
                         fprintf(arquivo, "%d %d %d %d %d %s\n", 
                                 oNav->codigo, oNav->severidade, oNav->status, 
                                 sNav->codigo, bNav->codigo, descTemp);
@@ -883,7 +880,6 @@ void carregarOcorrencias(listaBairros *B) {
     int cod, sev, stat, codS, codB;
     char desc[100];
 
-    // Formato esperado: %d %d %d %d %d %s
     while (fscanf(arquivo, "%d %d %d %d %d %s", &cod, &sev, &stat, &codS, &codB, desc) == 6) {
         // Voltar underlines para espaços
         for (int i = 0; desc[i] != '\0'; i++) {
@@ -1433,20 +1429,16 @@ void salvarChamados(listaChamados *C, listaEquipes *E) {
     while (cNav != NULL) {
         int codigo_equipe = 0;
 
-        // Descobrir qual equipe possui esse chamado associado (caso sua lógica vincule equipe->chamado)
-        // Se a associação for direta, use o código correspondente. Caso contrário, salvamos 0 ou o ID correto.
         if (E != NULL) {
             Equipe *eNav = E->inicio;
             while (eNav != NULL) {
-                // Se no seu sistema a equipe aponta para o chamado ou vice-versa, faça a checagem aqui.
-                // Como na struct Equipe o campo 'listaChamados' está comentado, adapte se necessário:
                 eNav = eNav->prox;
             }
         }
 
         int codOcorrencia = (cNav->Ocorrencia != NULL) ? cNav->Ocorrencia->codigo : 0;
 
-        // Formato: codigo codigo_ocorrencia codigo_equipe prioridade status
+        // codigo codigo_ocorrencia codigo_equipe prioridade status
         fprintf(arquivo, "%d %d %d %d %d\n", 
                 cNav->codigo, 
                 codOcorrencia, 
@@ -1470,7 +1462,6 @@ void carregarChamados(listaChamados *C, listaBairros *B, listaEquipes *E) {
 
     int codigo, codOcorrencia, codEquipe, prioridade, status;
 
-    // Formato: %d %d %d %d %d
     while (fscanf(arquivo, "%d %d %d %d %d", &codigo, &codOcorrencia, &codEquipe, &prioridade, &status) == 5) {
         
         // 1. Buscar o nó da ocorrência correspondente de forma global na memória
