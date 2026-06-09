@@ -92,6 +92,8 @@ void carregarEquipes(listaEquipes *E);
 void salvarChamados(listaChamados *C, listaEquipes *E);
 void carregarChamados(listaChamados *C, listaBairros *B, listaEquipes *E);
 
+void gerarRelatorioFinal(listaBairros *B, listaEquipes *E);
+
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
 // ==========================================
