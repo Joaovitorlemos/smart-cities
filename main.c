@@ -150,6 +150,9 @@ int main()
     int codBuscaBairro, codRemoverBairro;
     int tipoSensor, statusSensor, codBairroSensor;
     char nomeBairro[50];
+    listaBairros *listaGlobalBairros = criarListaBairros();
+    listaEquipes *listaGlobalEquipes = criarListaEquipes();
+    listaChamados *chamadosPendentes = criarListaChamados();
     
     listaBairros *B = criarListaBairros();
     listaSensores *S = criarListaSensor();
@@ -157,21 +160,7 @@ int main()
     listaEquipes *E = criarListaEquipes();
     listaChamados *C = criarListaChamados();
 
-    carregarBairros(B);
-    carregarSensores(B);
-    carregarOcorrencias(B);
-    carregarEquipes(E);
-    carregarChamados(C, B, E);
-
-
-    
-    salvarBairros(B);
-    salvarSensores(B);
-    salvarOcorrencias(B);
-    salvarEquipes(E);
-    salvarChamados(C, E);
-
-        do
+    do
     {
         printf("==================\nGERENCIAMENTO DE BAIRROS\n==================\n");
         printf("01)Cadastrar bairro\n02)Buscar bairro\n03)Listar bairros cadastrados\n04)Remover bairro\n");
