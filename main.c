@@ -144,6 +144,13 @@ void gerarChamado(int codigo, int codigoOcorrencia, int prioridade, int status, 
 void finalizarChamado(int codigoChamado, listaEquipes *E);
 
 // ==========================================
+// FINALIZAR SISTEMA
+// ==========================================
+void limpezaChamadosPendentes(listaChamados *chamadosPendentes);
+void limpezaListaGlobalEquipe(listaEquipes *listaGlobalEquipes);
+void limpezaBairroSensorOcorrencia (listaBairros *listaGlobalBairros);
+
+// ==========================================
 // FUNÇÃO PRINCIPAL
 // ==========================================
 int main()
@@ -341,7 +348,10 @@ int main()
             }break;
             case 15:
             {
-
+                printf("Finalizando o sistema...\n");
+                limpezaChamadosPendentes(listaChamados *chamadosPendentes);
+                limpezaListaGlobalEquipe(listaEquipes *listaGlobalEquipes);
+                limpezaBairroSensorOcorrencia (listaBairros *listaGlobalBairros);
             }break;
             default:
             {
@@ -1749,4 +1759,100 @@ void gerarRelatorioFinal(listaBairros *B, listaEquipes *E) {
     fprintf(arquivo, "==================================================\n");
     fclose(arquivo);
     printf("Relatório final gerado e sobrescrito em 'relatorio_final.txt' com sucesso!\n");
+}
+
+// ==========================================
+// FINALIZAR SISTEMA
+// ==========================================
+void limpezaChamadosPendentes(listaChamados *chamadosPendentes)
+{
+    if (chamadosPendentes != NULL) //se houver chamados a serem removidos
+    {
+        Chamado *navegador = chamadosPendentes->inicio;
+        Chamado *aux = NULL;
+
+        while(navegador != NULL)
+        {
+            aux = navegador;
+            navegador = navegador->prox;
+
+            free(aux);
+        }
+        free(chamadosPendentes);
+    }
+}
+
+void limpezaListaGlobalEquipe(listaEquipes *listaGlobalEquipes)
+{
+    if (listaGlobalEquipes != NULL) //trava de segurança: existem dados para serem apagados? 
+    {
+        Equipe *navegadorEquipe = listaGlobalEquipes->inicio;
+
+        while (navegadorEquipe != NULL) 
+        {
+            if (navegadorEquipe->listaChamados != NULL) //trava de segurança: existem chamados para serem apagados?
+            {
+                Chamado *navegadorChamado = navegadorEquipe->listaChamados->inicio;
+                
+                while (navegadorChamado != NULL) 
+                {
+                    Chamado *auxChamado = navegadorChamado;
+                    navegadorChamado = navegadorChamado->prox;
+                    free(auxChamado);
+                }
+                
+                free(navegadorEquipe->listaChamados); 
+            }
+            Equipe *auxEquipe = navegadorEquipe;
+            navegadorEquipe = navegadorEquipe->prox;
+            free(auxEquipe);            
+        }
+        free(listaGlobalEquipes);
+    }
+
+}
+
+void limpezaBairroSensorOcorrencia (listaBairros *listaGlobalBairros)
+{
+    if (listaGlobalBairros != NULL) //trava de segurança: a lista global de bairros existe? 
+    {
+        Bairro *navegadorBairro = listaGlobalBairros->inicio;
+
+        while (navegadorBairro != NULL) 
+        {
+            if (navegadorBairro->listaSensores != NULL) //trava de segurança: o bairro tem uma lista de sensores a ele alocada
+            {
+                Sensor *navegadorSensor = navegadorBairro->listaSensores->inicio;
+
+                while (navegadorSensor != NULL) 
+                {
+                    if (navegadorSensor->listaOcorrencias != NULL) //trava de segurança: o sensor tem uma lista de ocorrências a ele alocada
+                    {
+                        Ocorrencia *navegadorOcorrencia = navegadorSensor->listaOcorrencias->inicio;
+
+                        while (navegadorOcorrencia != NULL) 
+                        {
+                            Ocorrencia *auxOcorrencia = navegadorOcorrencia;
+                            navegadorOcorrencia = navegadorOcorrencia->prox;
+                            free(auxOcorrencia);
+                        }
+                        
+                        // A mochila de ocorrências esvaziou. Destrói o tecido dela.
+                        free(navegadorSensor->listaOcorrencias);
+                    }
+
+                    // O sensor está limpo. Hora de dar baixa no equipamento.
+                    Sensor *auxSensor = navegadorSensor;
+                    navegadorSensor = navegadorSensor->prox;
+                    free(auxSensor);
+                }
+                free(navegadorBairro->listaSensores);
+            }
+            Bairro *auxBairro = navegadorBairro;
+            navegadorBairro = navegadorBairro->prox; 
+            free(auxBairro);
+        }
+
+        free(listaGlobalBairros);
+    }
 }
