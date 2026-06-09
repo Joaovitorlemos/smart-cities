@@ -159,20 +159,6 @@ int main()
     listaEquipes *E = criarListaEquipes();
     listaChamados *C = criarListaChamados();
 
-    carregarBairros(B);
-    carregarSensores(B);
-    carregarOcorrencias(B);
-    carregarEquipes(E);
-    carregarChamados(C, B, E);
-
-
-    
-    salvarBairros(B);
-    salvarSensores(B);
-    salvarOcorrencias(B);
-    salvarEquipes(E);
-    salvarChamados(C, E);
-
         do
     {
         printf("==================\nGERENCIAMENTO DE BAIRROS\n==================\n");
@@ -1489,4 +1475,245 @@ void carregarChamados(listaChamados *C, listaBairros *B, listaEquipes *E) {
 
     fclose(arquivo);
     printf("Dados dos chamados carregados com sucesso de 'chamados.txt'.\n");
+}
+
+// ==========================================
+// RELATÓRIO GERAL
+// ==========================================
+void gerarRelatorioFinal(listaBairros *B, listaEquipes *E) {
+    // Abre o arquivo em modo "w" para sobrescrever os dados existentes a cada chamada
+    FILE *arquivo = fopen("relatorio_final.txt", "w");
+    if (arquivo == NULL) {
+        printf("Erro ao criar ou abrir o arquivo 'relatorio_final.txt'!\n");
+        return;
+    }
+
+    fprintf(arquivo, "==================================================\n");
+    fprintf(arquivo, "              RELATÓRIO FINAL DO SISTEMA           \n");
+    fprintf(arquivo, "==================================================\n\n");
+
+    // --------------------------------------------------
+    // Relatório 1: Bairros com maior quantidade de ocorrências.
+    // --------------------------------------------------
+    fprintf(arquivo, "Relatório 1: Bairros com maior quantidade de ocorrências\n");
+    fprintf(arquivo, "--------------------------------------------------\n");
+    if (B == NULL || B->inicio == NULL) {
+        fprintf(arquivo, "Nenhum bairro cadastrado.\n\n");
+    } else {
+        Bairro *bNav = B->inicio;
+        int maxOcorrencias = -1;
+
+        // Primeiro passo: Descobrir qual o maior número de ocorrências registrado em um único bairro
+        while (bNav != NULL) {
+            int contOcorrenciasBairro = 0;
+            if (bNav->listaSensores != NULL) {
+                Sensor *sNav = bNav->listaSensores->inicio;
+                while (sNav != NULL) {
+                    if (sNav->listaOcorrencias != NULL) {
+                        Ocorrencia *oNav = sNav->listaOcorrencias->inicio;
+                        while (oNav != NULL) {
+                            contOcorrenciasBairro++;
+                            oNav = oNav->prox;
+                        }
+                    }
+                    sNav = sNav->prox;
+                }
+            }
+            if (contOcorrenciasBairro > maxOcorrencias) {
+                maxOcorrencias = contOcorrenciasBairro;
+            }
+            bNav = bNav->prox;
+        }
+
+        // Segundo passo: Imprimir todos os bairros que empatam com essa quantidade máxima encontrada
+        bNav = B->inicio;
+        int encontrouR1 = 0;
+        while (bNav != NULL) {
+            int contOcorrenciasBairro = 0;
+            if (bNav->listaSensores != NULL) {
+                Sensor *sNav = bNav->listaSensores->inicio;
+                while (sNav != NULL) {
+                    if (sNav->listaOcorrencias != NULL) {
+                        Ocorrencia *oNav = sNav->listaOcorrencias->inicio;
+                        while (oNav != NULL) {
+                            contOcorrenciasBairro++;
+                            oNav = oNav->prox;
+                        }
+                    }
+                    sNav = sNav->prox;
+                }
+            }
+            if (contOcorrenciasBairro == maxOcorrencias && maxOcorrencias > 0) {
+                fprintf(arquivo, "Bairro: %s (Código: %d) - Total de Ocorrências: %d\n", bNav->nome, bNav->codigo, contOcorrenciasBairro);
+                encontrouR1 = 1;
+            }
+            bNav = bNav->prox;
+        }
+        if (!encontrouR1) {
+            fprintf(arquivo, "Nenhuma ocorrência registrada nos bairros.\n");
+        }
+        fprintf(arquivo, "\n");
+    }
+
+    // --------------------------------------------------
+    // Relatório 2: Sensores offline.
+    // --------------------------------------------------
+    fprintf(arquivo, "Relatório 2: Sensores offline\n");
+    fprintf(arquivo, "--------------------------------------------------\n");
+    int encontrouR2 = 0;
+    if (B != NULL && B->inicio != NULL) {
+        Bairro *bNav = B->inicio;
+        while (bNav != NULL) {
+            if (bNav->listaSensores != NULL) {
+                Sensor *sNav = bNav->listaSensores->inicio;
+                while (sNav != NULL) {
+                    if (sNav->status == 3) { // 3 - offline conforme mapeado no seu switch-case
+                        fprintf(arquivo, "Sensor ID: %d | Tipo: %d | Bairro: %s (Código: %d)\n", 
+                                sNav->codigo, sNav->tipo, bNav->nome, bNav->codigo);
+                        encontrouR2 = 1;
+                    }
+                    sNav = sNav->prox;
+                }
+            }
+            bNav = bNav->prox;
+        }
+    }
+    if (!encontrouR2) {
+        fprintf(arquivo, "Nenhum sensor offline no momento.\n");
+    }
+    fprintf(arquivo, "\n");
+
+    // --------------------------------------------------
+    // Relatório 3: Ocorrências críticas abertas.
+    // --------------------------------------------------
+    fprintf(arquivo, "Relatório 3: Ocorrências críticas abertas\n");
+    fprintf(arquivo, "--------------------------------------------------\n");
+    int encontrouR3 = 0;
+    if (B != NULL && B->inicio != NULL) {
+        Bairro *bNav = B->inicio;
+        while (bNav != NULL) {
+            if (bNav->listaSensores != NULL) {
+                Sensor *sNav = bNav->listaSensores->inicio;
+                while (sNav != NULL) {
+                    if (sNav->listaOcorrencias != NULL) {
+                        Ocorrencia *oNav = sNav->listaOcorrencias->inicio;
+                        while (oNav != NULL) {
+                            // severidade: 4 (crítica) | status: 1 (aberta)
+                            if (oNav->severidade == 4 && oNav->status == 1) {
+                                fprintf(arquivo, "Ocorrência ID: %d | Descrição: %s | Bairro: %s | Sensor ID: %d\n",
+                                        oNav->codigo, oNav->descricao, bNav->nome, sNav->codigo);
+                                encontrouR3 = 1;
+                            }
+                            oNav = oNav->prox;
+                        }
+                    }
+                    sNav = sNav->prox;
+                }
+            }
+            bNav = bNav->prox;
+        }
+    }
+    if (!encontrouR3) {
+        fprintf(arquivo, "Nenhuma ocorrência crítica aberta encontrada.\n");
+    }
+    fprintf(arquivo, "\n");
+
+    // --------------------------------------------------
+    // Relatório 4: Equipe com maior número de atendimentos.
+    // --------------------------------------------------
+    fprintf(arquivo, "Relatório 4: Equipe com maior número de atendimentos\n");
+    fprintf(arquivo, "--------------------------------------------------\n");
+    if (E == NULL || E->inicio == NULL) {
+        fprintf(arquivo, "Nenhuma equipe cadastrada.\n\n");
+    } else {
+        Equipe *eNav = E->inicio;
+        int maxAtendimentos = -1;
+
+        // Primeiro passo: Identificar o maior número de atendimentos das equipes
+        while (eNav != NULL) {
+            if (eNav->total_atendimentos > maxAtendimentos) {
+                maxAtendimentos = eNav->total_atendimentos;
+            }
+            eNav = eNav->prox;
+        }
+
+        // Segundo passo: Imprimir todas as equipes que possuem o teto de atendimentos (prevê empates)
+        eNav = E->inicio;
+        int encontrouR4 = 0;
+        while (eNav != NULL) {
+            if (eNav->total_atendimentos == maxAtendimentos && maxAtendimentos > 0) {
+                fprintf(arquivo, "Equipe: %s (Código: %d) | Especialidade: %s | Total de Atendimentos: %d\n",
+                        eNav->nome, eNav->codigo, eNav->especialidade, eNav->total_atendimentos);
+                encontrouR4 = 1;
+            }
+            eNav = eNav->prox;
+        }
+        if (!encontrouR4) {
+            fprintf(arquivo, "Nenhuma equipe realizou atendimentos até o momento.\n");
+        }
+        fprintf(arquivo, "\n");
+    }
+
+    // --------------------------------------------------
+    // Relatório 5: Quantidade de sensores por bairro.
+    // --------------------------------------------------
+    fprintf(arquivo, "Relatório 5: Quantidade de sensores por bairro\n");
+    fprintf(arquivo, "--------------------------------------------------\n");
+    if (B == NULL || B->inicio == NULL) {
+        fprintf(arquivo, "Nenhum bairro cadastrado.\n\n");
+    } else {
+        Bairro *bNav = B->inicio;
+        while (bNav != NULL) {
+            int contSensores = 0;
+            if (bNav->listaSensores != NULL) {
+                Sensor *sNav = bNav->listaSensores->inicio;
+                while (sNav != NULL) {
+                    contSensores++;
+                    sNav = sNav->prox;
+                }
+            }
+            fprintf(arquivo, "Bairro: %s (Código: %d) -> Qtd de Sensores: %d\n", bNav->nome, bNav->codigo, contSensores);
+            bNav = bNav->prox;
+        }
+        fprintf(arquivo, "\n");
+    }
+
+    // --------------------------------------------------
+    // Relatório 6: Quantidade total de ocorrências por severidade.
+    // --------------------------------------------------
+    fprintf(arquivo, "Relatório 6: Quantidade total de ocorrências por severidade\n");
+    fprintf(arquivo, "--------------------------------------------------\n");
+    int sev1 = 0, sev2 = 0, sev3 = 0, sev4 = 0;
+    if (B != NULL && B->inicio != NULL) {
+        Bairro *bNav = B->inicio;
+        while (bNav != NULL) {
+            if (bNav->listaSensores != NULL) {
+                Sensor *sNav = bNav->listaSensores->inicio;
+                while (sNav != NULL) {
+                    if (sNav->listaOcorrencias != NULL) {
+                        Ocorrencia *oNav = sNav->listaOcorrencias->inicio;
+                        while (oNav != NULL) {
+                            switch (oNav->severidade) {
+                                case 1: sev1++; break;
+                                case 2: sev2++; break;
+                                case 3: sev3++; break;
+                                case 4: sev4++; break;
+                            }
+                            oNav = oNav->prox;
+                        }
+                    }
+                    sNav = sNav->prox;
+                }
+            }
+            bNav = bNav->prox;
+        }
+    }
+    fprintf(arquivo, "Severidade 1 (Baixa):    %d\n", sev1);
+    fprintf(arquivo, "Severidade 2 (Média):    %d\n", sev2);
+    fprintf(arquivo, "Severidade 3 (Alta):     %d\n", sev3);
+    fprintf(arquivo, "Severidade 4 (Crítica):  %d\n\n", sev4);
+
+    fprintf(arquivo, "==================================================\n");
+    fclose(arquivo);
+    printf("Relatório final gerado e sobrescrito em 'relatorio_final.txt' com sucesso!\n");
 }
