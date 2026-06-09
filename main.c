@@ -93,6 +93,7 @@ void salvarChamados(listaChamados *C, listaEquipes *E);
 void carregarChamados(listaChamados *C, listaBairros *B, listaEquipes *E);
 
 void gerarRelatorioFinal(listaBairros *B, listaEquipes *E);
+void rodarSimulacao(listaBairros *B, listaEquipes *E, listaChamados *C);
 
 // ==========================================
 // GERENCIAMENTO DE BAIRROS
@@ -208,6 +209,7 @@ int main()
 
                 cadastrarBairro(codBairro, nomeBairro, B);
                 codBairro++;
+                salvarBairros(B);
             }break;
             case 2:
             {
@@ -226,6 +228,8 @@ int main()
                 scanf("%d", &codRemoverBairro);
 
                 removerBairro(B, codRemoverBairro);
+                salvarBairros(B);
+
             }break;
             case 5:
             {
@@ -242,6 +246,7 @@ int main()
 
                 cadastrarSensor(codSensor, tipoSensor, statusSensor, codBairroSensor, B);
                 codSensor++;
+                salvarSensores(B);
             }break;
             case 6:
             {
@@ -256,6 +261,8 @@ int main()
                 scanf("%d", &novoStatus);
 
                 alterarStatusSensor(codSensorStatus, codBairroStatus, novoStatus, B, C);
+                salvarSensores(B);
+                salvarChamados(C, E);
             }break;
             case 7:
          {
@@ -299,6 +306,8 @@ int main()
 
                 registrarOcorrencia(codOcorrencia, severidadeOcorrencia, 1, codSensorAssociadoOcorrencia, codBairroAssociadoOcorrencia, descricaoOcorrencia, B, C);
                 codOcorrencia++;
+                salvarOcorrencias(B);
+                salvarChamados(C, E);
             }break;
             case 10:
             {
@@ -314,6 +323,7 @@ int main()
 
                 cadastrarEquipe(codEquipe, nomeEquipe, especialidadeEquipe, E);
                 codEquipe++;
+                salvarEquipes(E);
             }break;
             case 11:
             {
@@ -326,7 +336,7 @@ int main()
                 scanf("%d", &codEquipeAssociar);
 
                 associarEquipe(codChamadoAssociar, codEquipeAssociar, C, E);
-
+                salvarChamados(C, E);
             }break;
             case 12:
             {
@@ -336,11 +346,12 @@ int main()
                 scanf("%d", &codChamadoFinalizado);
 
                 finalizarChamado(codChamadoFinalizado, E);
+                salvarChamados(C, E);
 
             }break;
             case 13:
             {
-
+                rodarSimulacao(B, E, C);
             }break;
             case 14:
             {
@@ -349,9 +360,12 @@ int main()
             case 15:
             {
                 printf("Finalizando o sistema...\n");
-                limpezaChamadosPendentes(listaChamados *chamadosPendentes);
-                limpezaListaGlobalEquipe(listaEquipes *listaGlobalEquipes);
-                limpezaBairroSensorOcorrencia (listaBairros *listaGlobalBairros);
+                
+                limpezaChamadosPendentes(C);
+                limpezaListaGlobalEquipe(E);
+                limpezaBairroSensorOcorrencia(B);
+
+                B = NULL; E = NULL; C = NULL;
             }break;
             default:
             {
@@ -362,13 +376,6 @@ int main()
 
     }
     while (opcao != 15);
-
-    // Salvando as alterações antes de sair do programa
-    salvarBairros(B);
-    salvarSensores(B);
-    salvarOcorrencias(B);
-    salvarEquipes(E);
-    salvarChamados(C, E);
 
     return 0;
 }
@@ -1518,6 +1525,360 @@ void carregarChamados(listaChamados *C, listaBairros *B, listaEquipes *E) {
 
     fclose(arquivo);
     printf("Dados dos chamados carregados com sucesso de 'chamados.txt'.\n");
+}
+
+// ==========================================
+// MODO SIMULAÇÃO
+// ==========================================
+void rodarSimulacao(listaBairros *B, listaEquipes *E, listaChamados *C)
+{
+    // --- Abertura do arquivo de entrada ---
+    FILE *arqSim = fopen("simulacao.txt", "r");
+    if (arqSim == NULL) {
+        printf("ERRO: arquivo 'simulacao.txt' não encontrado!\n");
+        return;
+    }
+
+    // --- Abertura do log (append para não apagar rodadas anteriores) ---
+    FILE *log = fopen("log_execucao.txt", "a");
+    if (log == NULL) {
+        printf("ERRO: não foi possível abrir 'log_execucao.txt'!\n");
+        fclose(arqSim);
+        return;
+    }
+
+    fprintf(log, "==================================================\n");
+    fprintf(log, "        INICIO DA SIMULACAO\n");
+    fprintf(log, "==================================================\n");
+
+    char linha[300];
+    int horario = 0; // horário lógico: incrementa a cada operação
+
+    while (fgets(linha, sizeof(linha), arqSim) != NULL)
+    {
+        // Remove \r e \n do final da linha
+        linha[strcspn(linha, "\r\n")] = '\0';
+
+        // Ignora linhas vazias
+        if (strlen(linha) == 0) continue;
+
+        // Extrai o comando (primeira palavra)
+        char comando[50] = {0};
+        sscanf(linha, "%49s", comando);
+
+        horario++;
+        fprintf(log, "--------------------------------------------------\n");
+        fprintf(log, "[T=%d] Comando: %s\n", horario, linha);
+
+        // ======================================
+        // FIM
+        // ======================================
+        if (strcmp(comando, "FIM") == 0)
+        {
+            fprintf(log, "Resultado: SUCESSO | Sistema encerrado via simulacao.\n");
+            printf("[SIM] FIM recebido. Encerrando simulacao.\n");
+            break;
+        }
+
+        // ======================================
+        // cadastrarBairro codigo nome
+        // ======================================
+        else if (strcmp(comando, "cadastrarBairro") == 0)
+        {
+            int cod; char nome[50];
+            if (sscanf(linha, "%*s %d %49s", &cod, nome) != 2) {
+                fprintf(log, "Resultado: FALHA | Formato invalido para cadastrarBairro.\n");
+                continue;
+            }
+            // Restaura underlines -> espaços
+            for (int i = 0; nome[i]; i++) if (nome[i] == '_') nome[i] = ' ';
+
+            Bairro *existe = buscarBairro(cod, B);
+            if (existe != NULL) {
+                fprintf(log, "Resultado: FALHA | Bairro %d ja existe.\n", cod);
+                printf("[SIM] FALHA: Bairro %d ja existe.\n", cod);
+            } else {
+                cadastrarBairro(cod, nome, B);
+                fprintf(log, "Resultado: SUCESSO | Bairro cadastrado: Codigo=%d Nome=%s\n", cod, nome);
+                printf("[SIM] SUCESSO: Bairro %d (%s) cadastrado.\n", cod, nome);
+            }
+        }
+
+        // ======================================
+        // cadastrarSensor codigo tipo status codigoBairro
+        // ======================================
+        else if (strcmp(comando, "cadastrarSensor") == 0)
+        {
+            int cod, tipo, status, codB;
+            if (sscanf(linha, "%*s %d %d %d %d", &cod, &tipo, &status, &codB) != 4) {
+                fprintf(log, "Resultado: FALHA | Formato invalido para cadastrarSensor.\n");
+                continue;
+            }
+            Bairro *b = buscarBairro(codB, B);
+            if (b == NULL) {
+                fprintf(log, "Resultado: FALHA | Bairro %d nao existe para cadastrar sensor %d.\n", codB, cod);
+                printf("[SIM] FALHA: Bairro %d nao existe.\n", codB);
+            } else {
+                Sensor *existe = buscarSensor(cod, b->listaSensores);
+                if (existe != NULL) {
+                    fprintf(log, "Resultado: FALHA | Sensor %d ja existe no bairro %d.\n", cod, codB);
+                    printf("[SIM] FALHA: Sensor %d ja existe.\n", cod);
+                } else {
+                    cadastrarSensor(cod, tipo, status, codB, B);
+                    fprintf(log, "Resultado: SUCESSO | Sensor cadastrado: Codigo=%d Tipo=%d Status=%d Bairro=%d\n", cod, tipo, status, codB);
+                    printf("[SIM] SUCESSO: Sensor %d cadastrado no bairro %d.\n", cod, codB);
+                }
+            }
+        }
+
+        // ======================================
+        // cadastrarEquipe codigo nome especialidade
+        // ======================================
+        else if (strcmp(comando, "cadastrarEquipe") == 0)
+        {
+            int cod; char nome[50], espec[50];
+            if (sscanf(linha, "%*s %d %49s %49s", &cod, nome, espec) != 3) {
+                fprintf(log, "Resultado: FALHA | Formato invalido para cadastrarEquipe.\n");
+                continue;
+            }
+            for (int i = 0; nome[i]; i++) if (nome[i] == '_') nome[i] = ' ';
+            for (int i = 0; espec[i]; i++) if (espec[i] == '_') espec[i] = ' ';
+
+            Equipe *existe = buscarEquipe(cod, E);
+            if (existe != NULL) {
+                fprintf(log, "Resultado: FALHA | Equipe %d ja existe.\n", cod);
+                printf("[SIM] FALHA: Equipe %d ja existe.\n", cod);
+            } else {
+                cadastrarEquipe(cod, nome, espec, E);
+                fprintf(log, "Resultado: SUCESSO | Equipe cadastrada: Codigo=%d Nome=%s Especialidade=%s\n", cod, nome, espec);
+                printf("[SIM] SUCESSO: Equipe %d (%s) cadastrada.\n", cod, nome);
+            }
+        }
+
+        // ======================================
+        // registrarOcorrencia codigo severidade status codigoSensor codigoBairro descricao
+        // ======================================
+        else if (strcmp(comando, "registrarOcorrencia") == 0)
+        {
+            int cod, sev, stat, codS, codB; char desc[100];
+            if (sscanf(linha, "%*s %d %d %d %d %d %99s", &cod, &sev, &stat, &codS, &codB, desc) != 6) {
+                fprintf(log, "Resultado: FALHA | Formato invalido para registrarOcorrencia.\n");
+                continue;
+            }
+            for (int i = 0; desc[i]; i++) if (desc[i] == '_') desc[i] = ' ';
+
+            Bairro *b = buscarBairro(codB, B);
+            if (b == NULL) {
+                fprintf(log, "Resultado: FALHA | Bairro %d nao existe.\n", codB);
+                printf("[SIM] FALHA: Bairro %d nao existe.\n", codB);
+                continue;
+            }
+            Sensor *s = buscarSensor(codS, b->listaSensores);
+            if (s == NULL) {
+                fprintf(log, "Resultado: FALHA | Sensor %d nao existe no bairro %d.\n", codS, codB);
+                printf("[SIM] FALHA: Sensor %d nao existe.\n", codS);
+                continue;
+            }
+            Ocorrencia *existe = buscarOcorrencia(cod, s->listaOcorrencias);
+            if (existe != NULL) {
+                fprintf(log, "Resultado: FALHA | Ocorrencia %d ja existe.\n", cod);
+                printf("[SIM] FALHA: Ocorrencia %d ja existe.\n", cod);
+            } else {
+                registrarOcorrencia(cod, sev, stat, codS, codB, desc, B, C);
+                fprintf(log, "Resultado: SUCESSO | Ocorrencia registrada: Codigo=%d Severidade=%d Status=%d Sensor=%d Bairro=%d Desc=%s\n",
+                        cod, sev, stat, codS, codB, desc);
+                printf("[SIM] SUCESSO: Ocorrencia %d registrada (sev=%d).\n", cod, sev);
+                if (sev == 4)
+                    fprintf(log, "  >> Chamado automatico gerado para ocorrencia critica %d.\n", cod);
+            }
+        }
+
+        // ======================================
+        // gerarChamado codigo codigoOcorrencia prioridade status
+        // ======================================
+        else if (strcmp(comando, "gerarChamado") == 0)
+        {
+            int cod, codO, prior, stat;
+            if (sscanf(linha, "%*s %d %d %d %d", &cod, &codO, &prior, &stat) != 4) {
+                fprintf(log, "Resultado: FALHA | Formato invalido para gerarChamado.\n");
+                continue;
+            }
+            Chamado *existe = buscarChamado(cod, C);
+            if (existe != NULL) {
+                fprintf(log, "Resultado: FALHA | Chamado %d ja existe.\n", cod);
+                printf("[SIM] FALHA: Chamado %d ja existe.\n", cod);
+                continue;
+            }
+            Ocorrencia *o = buscarOcorrenciaGlobal(codO, B);
+            if (o == NULL) {
+                fprintf(log, "Resultado: FALHA | Ocorrencia %d nao encontrada para gerar chamado %d.\n", codO, cod);
+                printf("[SIM] FALHA: Ocorrencia %d nao existe.\n", codO);
+            } else {
+                gerarChamado(cod, codO, prior, stat, C, B);
+                fprintf(log, "Resultado: SUCESSO | Chamado gerado: Codigo=%d Ocorrencia=%d Prioridade=%d Status=%d\n",
+                        cod, codO, prior, stat);
+                printf("[SIM] SUCESSO: Chamado %d gerado.\n", cod);
+            }
+        }
+
+        // ======================================
+        // associarEquipe codigoChamado codigoEquipe
+        // ======================================
+        else if (strcmp(comando, "associarEquipe") == 0)
+        {
+            int codCh, codEq;
+            if (sscanf(linha, "%*s %d %d", &codCh, &codEq) != 2) {
+                fprintf(log, "Resultado: FALHA | Formato invalido para associarEquipe.\n");
+                continue;
+            }
+            Equipe *eq = buscarEquipe(codEq, E);
+            if (eq == NULL) {
+                fprintf(log, "Resultado: FALHA | Equipe %d nao existe.\n", codEq);
+                printf("[SIM] FALHA: Equipe %d nao existe.\n", codEq);
+                continue;
+            }
+            Chamado *ch = buscarChamado(codCh, C);
+            if (ch == NULL) {
+                fprintf(log, "Resultado: FALHA | Chamado %d nao esta na fila de pendentes.\n", codCh);
+                printf("[SIM] FALHA: Chamado %d nao encontrado nos pendentes.\n", codCh);
+                continue;
+            }
+            // Verifica compatibilidade antes de chamar a função
+            if (strcmp(eq->especialidade, ch->Ocorrencia->descricao) != 0) {
+                fprintf(log, "Resultado: FALHA | Incompatibilidade: Equipe '%s' x Ocorrencia '%s'.\n",
+                        eq->especialidade, ch->Ocorrencia->descricao);
+                printf("[SIM] FALHA: Incompatibilidade de especialidade.\n");
+                continue;
+            }
+            associarEquipe(codCh, codEq, C, E);
+            fprintf(log, "Resultado: SUCESSO | Chamado %d associado a equipe %d (%s).\n", codCh, codEq, eq->nome);
+            printf("[SIM] SUCESSO: Chamado %d associado a equipe %d.\n", codCh, codEq);
+        }
+
+        // ======================================
+        // alterarStatusSensor codigoSensor codigoBairro novoStatus
+        // ======================================
+        else if (strcmp(comando, "alterarStatusSensor") == 0)
+        {
+            int codS, codB, novoStat;
+            if (sscanf(linha, "%*s %d %d %d", &codS, &codB, &novoStat) != 3) {
+                fprintf(log, "Resultado: FALHA | Formato invalido para alterarStatusSensor.\n");
+                continue;
+            }
+            Bairro *b = buscarBairro(codB, B);
+            if (b == NULL) {
+                fprintf(log, "Resultado: FALHA | Bairro %d nao existe.\n", codB);
+                printf("[SIM] FALHA: Bairro %d nao existe.\n", codB);
+                continue;
+            }
+            Sensor *s = buscarSensor(codS, b->listaSensores);
+            if (s == NULL) {
+                fprintf(log, "Resultado: FALHA | Sensor %d nao existe no bairro %d.\n", codS, codB);
+                printf("[SIM] FALHA: Sensor %d nao existe.\n", codS);
+                continue;
+            }
+            int statusAnterior = s->status;
+            alterarStatusSensor(codS, codB, novoStat, B, C);
+            fprintf(log, "Resultado: SUCESSO | Sensor %d (Bairro %d): status %d -> %d\n",
+                    codS, codB, statusAnterior, novoStat);
+            printf("[SIM] SUCESSO: Sensor %d status alterado para %d.\n", codS, novoStat);
+            if (novoStat == 3)
+                fprintf(log, "  >> Chamado de manutencao gerado automaticamente para sensor offline %d.\n", codS);
+        }
+
+        // ======================================
+        // finalizarChamado codigoChamado
+        // ======================================
+        else if (strcmp(comando, "finalizarChamado") == 0)
+        {
+            int codCh;
+            if (sscanf(linha, "%*s %d", &codCh) != 1) {
+                fprintf(log, "Resultado: FALHA | Formato invalido para finalizarChamado.\n");
+                continue;
+            }
+            // Verifica se o chamado existe em alguma equipe antes de finalizar
+            int encontrado = 0;
+            if (E != NULL) {
+                Equipe *eNav = E->inicio;
+                while (eNav != NULL && !encontrado) {
+                    if (eNav->listaChamados != NULL) {
+                        Chamado *cNav = eNav->listaChamados->inicio;
+                        while (cNav != NULL) {
+                            if (cNav->codigo == codCh) { encontrado = 1; break; }
+                            cNav = cNav->prox;
+                        }
+                    }
+                    eNav = eNav->prox;
+                }
+            }
+            if (!encontrado) {
+                fprintf(log, "Resultado: FALHA | Chamado %d nao esta associado a nenhuma equipe.\n", codCh);
+                printf("[SIM] FALHA: Chamado %d nao associado a equipe.\n", codCh);
+            } else {
+                finalizarChamado(codCh, E);
+                fprintf(log, "Resultado: SUCESSO | Chamado %d finalizado.\n", codCh);
+                printf("[SIM] SUCESSO: Chamado %d finalizado.\n", codCh);
+            }
+        }
+
+        // ======================================
+        // listarSensoresBairro codigoBairro
+        // ======================================
+        else if (strcmp(comando, "listarSensoresBairro") == 0)
+        {
+            int codB;
+            if (sscanf(linha, "%*s %d", &codB) != 1) {
+                fprintf(log, "Resultado: FALHA | Formato invalido para listarSensoresBairro.\n");
+                continue;
+            }
+            Bairro *b = buscarBairro(codB, B);
+            if (b == NULL) {
+                fprintf(log, "Resultado: FALHA | Bairro %d nao existe.\n", codB);
+                printf("[SIM] FALHA: Bairro %d nao existe.\n", codB);
+            } else {
+                fprintf(log, "Resultado: SUCESSO | Listagem de sensores do bairro %d (%s) exibida no console.\n", codB, b->nome);
+                printf("[SIM] Sensores do bairro %d:\n", codB);
+                listarSensoresBairro(codB, B);
+            }
+        }
+
+        // ======================================
+        // listarOcorrencias
+        // ======================================
+        else if (strcmp(comando, "listarOcorrencias") == 0)
+        {
+            fprintf(log, "Resultado: SUCESSO | Listagem global de ocorrencias exibida no console.\n");
+            printf("[SIM] Listagem de ocorrencias:\n");
+            listarOcorrencias(B);
+        }
+
+        // ======================================
+        // relatorioGeral
+        // ======================================
+        else if (strcmp(comando, "relatorioGeral") == 0)
+        {
+            gerarRelatorioFinal(B, E);
+            fprintf(log, "Resultado: SUCESSO | Relatorio final gerado em 'relatorio_final.txt'.\n");
+            printf("[SIM] SUCESSO: relatorio_final.txt gerado.\n");
+        }
+
+        // ======================================
+        // Comando desconhecido
+        // ======================================
+        else
+        {
+            fprintf(log, "Resultado: INVALIDO | Comando '%s' nao reconhecido.\n", comando);
+            printf("[SIM] AVISO: comando '%s' nao reconhecido. Continuando...\n", comando);
+        }
+    }
+
+    fprintf(log, "==================================================\n");
+    fprintf(log, "        FIM DA SIMULACAO\n");
+    fprintf(log, "==================================================\n\n");
+
+    fclose(arqSim);
+    fclose(log);
+    printf("[SIM] Simulacao concluida. Log salvo em 'log_execucao.txt'.\n");
 }
 
 // ==========================================
